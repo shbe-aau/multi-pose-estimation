@@ -86,7 +86,7 @@ class DatasetGenerator():
         for o in obj_paths:
             if('.ply' not in o):
                 print("Error! {0} is not a .ply file!".format(o))
-                return None
+                exit()
             curr_model = inout.load_ply(o)
             curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
                                 self.K, surf_color=(1, 1, 1), mode='rgb')
@@ -755,21 +755,25 @@ class DatasetGenerator():
 
         data = {"ids":curr_ids,
                 "images":images,
-                "Rs":curr_Rs}
+                "Rs":curr_Rs,
+                "Ts":curr_ts}
         return data
 
     def generate_images(self, num_samples):
         data = {"ids":[],
                 "images":[],
-                "Rs":[]}
+                "Rs":[],
+                "Ts":[]}
         while(len(data["images"]) < num_samples):
             curr_data = self.generate_image_batch(augment=self.augment)
             data["images"] = data["images"] + curr_data["images"]
             data["Rs"] = data["Rs"] + curr_data["Rs"]
             data["ids"] = data["ids"] + curr_data["ids"]
+            data["Ts"] = data["Ts"] + curr_data["Ts"]
         data["images"] = data["images"][:num_samples]
         data["Rs"] = data["Rs"][:num_samples]
         data["ids"] = data["ids"][:num_samples]
+        data["Ts"] = data["Ts"][:num_samples]
         return data
 
     def __iter__(self):
