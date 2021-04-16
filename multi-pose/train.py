@@ -439,6 +439,27 @@ def runEpoch(br, dataset, model,
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(config.getboolean('Training', 'SAVE_IMAGES')):
+            # Visualize hard samples
+            if(model.training):
+                hard_img_dir = os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
+                prepareDir(hard_img_dir)
+
+                for h in hard_indeces[:1]:
+                    gt_img = (gt_images[h]).detach().cpu().numpy()
+                    predicted_img = (predicted_images[h]).detach().cpu().numpy()
+
+                    #vmin = np.linalg.norm(ts)*0.9
+                    vmin = min(np.min(gt_img), np.min(predicted_img))
+                    vmax = max(np.max(gt_img), np.max(predicted_img))
+
+                    fig = plt.figure(figsize=(12,3+len(views)*2))
+                    plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
+                             predicted_poses, batch_loss, batch_size, threshold=config['Loss_parameters'].getfloat('DEPTH_MAX'), img_num=h)
+                    fig.tight_layout()
+
+                    fig.savefig(os.path.join(hard_img_dir, "epoch{0}-batch{1}-sample{2}.png".format(epoch,i,h)), dpi=fig.dpi)
+                    plt.close()
+
             if(model.training):
                 batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
             else:
@@ -447,7 +468,8 @@ def runEpoch(br, dataset, model,
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()
 
-            vmin = np.linalg.norm(T)*0.9
+            #vmin = np.linalg.norm(ts)*0.9
+            vmin = min(np.min(gt_img), np.min(predicted_img))
             vmax = max(np.max(gt_img), np.max(predicted_img))
 
             fig = plt.figure(figsize=(12,3+num_views*2))

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from utils.tools import *
 from utils.utils import *
 from scipy.spatial.transform import Rotation
+from PIL import Image
 
 def pointToMat(point):
     r = Rotation.from_euler('yz', point['spherical']) # select point wanted for comparison here
@@ -28,7 +29,7 @@ def main():
     # Need to replace sundermeyer-random with something where we can
     # use predetermined poses, to plot each arch to visualize
     datagen = DatasetGenerator("",
-                            "./data/cad-files/ply-files/obj_10.ply",
+                            ["./data/cad-files/ply-files/obj_10.ply"],
                             375,
                             num_datapoints,
                             "not_used",
@@ -85,6 +86,9 @@ def main():
         # Try with points from the sphere
         points = np.load('./output/depth/spherical_mapping_obj10_1_500/points.npy', allow_pickle=True)
         num_datapoints = len(points)
+        #print(points[0])
+        #points = [points[0]]*num_datapoints
+        #print(points[1])
 
         Rin = []
         for point in points:
@@ -102,6 +106,12 @@ def main():
     t = torch.tensor([0.0, 0.0, 375])
     # Generate images
     data = datagen.generate_image_batch(Rin = Rin, tin = t, augment = False)
+
+    for i, image in enumerate(data["images"]):
+        im = Image.fromarray((image * 255).astype(np.uint8))
+        if im.mode != 'RGB':
+            im = im.convert('RGB')
+        im.save("{}{}.jpeg".format(vis_directory,i))
 
     # run images through model
     # Predict poses
