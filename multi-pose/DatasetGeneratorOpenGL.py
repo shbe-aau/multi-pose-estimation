@@ -63,7 +63,7 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
-        self.render_size = 3*self.img_size
+        self.render_size = self.img_size #3*self.img_size
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
         self.K = np.array([1075.65, 0, self.render_size/2,
@@ -89,7 +89,7 @@ class DatasetGenerator():
                 exit()
             curr_model = inout.load_ply(o)
             curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
-                                self.K, surf_color=(1, 1, 1), mode='rgb')
+                                self.K, surf_color=(1, 1, 1), mode='rgb', clip_far=4000)
             self.renderers.append(curr_rend)
 
         self.pose_reuse = False
@@ -253,7 +253,7 @@ class DatasetGenerator():
         aug = iaa.Sequential([
             #iaa.Sometimes(0.5, PerspectiveTransform(0.05)),
             #iaa.Sometimes(0.5, CropAndPad(percent=(-0.05, 0.1))),
-            iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
+            #iaa.Sometimes(0.5, iaa.Affine(scale=(1.0, 1.2))),
             #iaa.Sometimes(0.5, iaa.CoarseDropout( p=0.2, size_percent=0.05) ),
             iaa.Sometimes(0.5,
                 iaa.SomeOf(2, [ iaa.CoarseDropout( p=0.2, size_percent=0.05),
@@ -660,6 +660,15 @@ class DatasetGenerator():
 
             R = R.detach().cpu().numpy()
             t = t.detach().cpu().numpy()
+            t = t.copy()
+
+            # change t by gaussian noise scaled to a std of 1% of z scale for x,y
+            std = t[2]*0.02
+            t[0] += np.random.normal(0, std)
+            t[1] += np.random.normal(0, std)
+            t[2] += np.random.normal(0, std*10)
+            # flip for opengl
+            t_opengl = t * [-1, -1, 1]
 
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
@@ -676,7 +685,7 @@ class DatasetGenerator():
                 random_light_pos = None
 
             # Render images
-            ren_rgb = self.renderers[obj_id].render(R_opengl, t, random_light_pos)
+            ren_rgb = self.renderers[obj_id].render(R_opengl, t_opengl, random_light_pos)
 
             curr_Rs.append(R)
             curr_ts.append(t)
@@ -693,12 +702,19 @@ class DatasetGenerator():
             # Calc bounding box and crop image
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
-            obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
+            if len(ys) != 0 and len(xs) != 0:
+                obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
+            else:
+                obj_bb = [0, 0, self.render_size, self.render_size]
 
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
 
+<<<<<<< HEAD
             if self.max_rel_offset != 0:
+=======
+            if False:
+>>>>>>> Hardcoded setup of datagenerator for tranlation work, check and replace all these changes with propper solution later
                 rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
                 rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
             else:
@@ -707,11 +723,13 @@ class DatasetGenerator():
 
             obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
             pad_factor =  1.2
-            if(augment and self.max_rel_scale is not None):
+            if(False and self.max_rel_scale is not None):
                 scale = np.random.uniform(-self.max_rel_scale, self.max_rel_scale)
                 pad_factor = pad_factor + scale
 
-            cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
+                cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
+            else:
+                cropped = org_img.copy()
 
             if(self.realistic_occlusions):
                 # Apply random renders behind
