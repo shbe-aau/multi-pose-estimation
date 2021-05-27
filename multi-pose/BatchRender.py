@@ -18,6 +18,7 @@ from pytorch3d.renderer import (
     RasterizationSettings, MeshRenderer, MeshRasterizer, BlendParams,
     SoftSilhouetteShader, SoftPhongShader, PointLights, DirectionalLights, HardPhongShader
 )
+from pytorch3d.renderer.cameras import FoVPerspectiveCameras, PerspectiveCameras
 
 from pytorch3d.ops import sample_points_from_meshes
 from CustomRenderers import *
@@ -111,7 +112,24 @@ class BatchRender:
 
 
     def initRender(self, method, image_size):
-        cameras = OpenGLPerspectiveCameras(device=self.device, fov=15)
+        #cameras = OpenGLPerspectiveCameras(device=self.device, fov=15)
+        #K = cameras.get_projection_transform()
+        #print(K.shape)
+        #print(K[0].get_matrix())
+        #exit()
+
+        K = np.array([np.array([1075.65091572, 0, 641.068883438, 0,
+                             0, 1073.90347929, 507.72159802, 0,
+                             0, 0, 0, 1,
+                             0, 0, 1, 0]).reshape(4,4)]*64)
+        print(K.shape)
+        print(K[0])
+
+        #cameras = FoVPerspectiveCameras(device=self.device, K=K)
+        #cameras = PerspectiveCameras(device=self.device, K=K, image_size=((1280,1024),))
+        cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=((214.06888344, 167.72159802),), image_size=((400,400),))
+        K = cameras.get_projection_transform()
+        print(K[0].get_matrix())
 
         if(method=="soft-silhouette"):
             blend_params = BlendParams(sigma=1e-7, gamma=1e-7)
