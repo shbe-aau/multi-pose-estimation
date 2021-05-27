@@ -63,9 +63,13 @@ class DatasetGenerator():
         self.batch_size = batch_size
         self.dist = obj_distance
         self.img_size = 128
-        self.render_size = self.img_size #3*self.img_size
+        self.render_size = 400 #self.img_size #3*self.img_size
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
+        # How do we update this K matrix to match the data and pytoch renderer?
+        # self.K = np.array([1075.65, 0, 214.06888344,
+        #                    0, 1073.90, 167.72159802,
+        #                    0, 0, 1]).reshape(3,3)
         self.K = np.array([1075.65, 0, self.render_size/2,
                            0, 1073.90, self.render_size/2,
                            0, 0, 1]).reshape(3,3)
@@ -645,7 +649,9 @@ class DatasetGenerator():
                     obj_id = np.random.randint(0, len(self.renderers), size=1)[0]
                 else:
                     obj_id = 0
-                t = torch.tensor([0.0, 0.0, self.dist[obj_id][-1]])
+                #t = torch.tensor([0.0, 0.0, self.dist[obj_id][-1]])
+                #t = torch.tensor([8.12247431, -18.39236880, 624.55950585])
+                t = torch.tensor([0, 0, 624.55950585])
             else:
                 R = Rin[k]
                 t = tin
@@ -664,9 +670,9 @@ class DatasetGenerator():
 
             # change t by gaussian noise scaled to a std of 1% of z scale for x,y
             std = t[2]*0.02
-            t[0] += np.random.normal(0, std)
-            t[1] += np.random.normal(0, std)
-            t[2] += np.random.normal(0, std*10)
+            #t[0] += np.random.normal(0, std)
+            #t[1] += np.random.normal(0, std)
+            #t[2] += np.random.normal(0, std*10)
             # flip for opengl
             t_opengl = t * [-1, -1, 1]
 
@@ -702,7 +708,7 @@ class DatasetGenerator():
             # Calc bounding box and crop image
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
-            if len(ys) != 0 and len(xs) != 0:
+            if False and len(ys) != 0 and len(xs) != 0:
                 obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
             else:
                 obj_bb = [0, 0, self.render_size, self.render_size]
@@ -710,11 +716,7 @@ class DatasetGenerator():
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
 
-<<<<<<< HEAD
             if self.max_rel_offset != 0:
-=======
-            if False:
->>>>>>> Hardcoded setup of datagenerator for tranlation work, check and replace all these changes with propper solution later
                 rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
                 rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
             else:
@@ -729,7 +731,9 @@ class DatasetGenerator():
 
                 cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
             else:
-                cropped = org_img.copy()
+                #cropped = org_img.copy()
+                cropped = extract_square_patch(org_img, [0, 0, self.render_size, self.render_size], pad_factor=1)
+                # test with some interpolation to get it to a 128*128 for encoder
 
             if(self.realistic_occlusions):
                 # Apply random renders behind
