@@ -67,12 +67,15 @@ class DatasetGenerator():
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
         # How do we update this K matrix to match the data and pytoch renderer?
-        # self.K = np.array([1075.65, 0, 214.06888344,
-        #                    0, 1073.90, 167.72159802,
+        #self.K = np.array([1075.65091572, 0, 214.06888344,
+        #                    0, 1073.90347929, 167.72159802,
         #                    0, 0, 1]).reshape(3,3)
-        self.K = np.array([1075.65, 0, self.render_size/2,
-                           0, 1073.90, self.render_size/2,
-                           0, 0, 1]).reshape(3,3)
+        #self.K = np.array([1075.65, 0, self.render_size/2,
+        #                   0, 1073.90, self.render_size/2,
+        #                   0, 0, 1]).reshape(3,3)
+        self.K = np.array([1075.65091572, 0, self.render_size/2,
+                            0, 1073.90347929, self.render_size/2,
+                            0, 0, 1]).reshape(3,3)
 
         self.augment = augment_imgs
         self.aug = self.setup_augmentation()
