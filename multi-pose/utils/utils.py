@@ -297,7 +297,8 @@ def plotView(currView, numViews, vmin, vmax, input_images, groundtruth, predicte
 
     # Plot depth map render from prediction
     plt.subplot(1, 4, 3)
-    plt.imshow(predicted[img_num].detach().cpu().numpy())#,
+    plt.imshow((groundtruth[img_num].detach().cpu().numpy()+(input_images[img_num]*255).astype(np.uint8)[:,:,2]*4)/2)
+    #plt.imshow(predicted[img_num].detach().cpu().numpy())#,
                #vmin=vmin, vmax=vmax)
 
     np.set_printoptions(suppress=True)
