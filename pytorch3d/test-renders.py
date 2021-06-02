@@ -31,19 +31,19 @@ from pytorch3d.renderer.mesh.textures import TexturesVertex
 
 # ------------ Params ------------------------
 obj_id = 10
-render_size_x = 400
-render_size_y = 400
+render_size_width = 400
+render_size_height = 400
 
-org_size_x = 720.0
-org_size_y = 540.0
+org_size_width = 720.0
+org_size_height = 540.0
 
-render_size_x = int(render_size_x*(org_size_x/org_size_y))
+render_size_width = int(render_size_width*(org_size_width/org_size_height))
 
-fx = 1075.65091572 * (render_size_x/org_size_x)
-fy = 1073.90347929 * (render_size_y/org_size_y)
+fx = 1075.65091572 * (render_size_width/org_size_width)
+fy = 1073.90347929 * (render_size_height/org_size_height)
 
-px = 367.06888344 * (render_size_x/org_size_x)
-py = 247.72159802 * (render_size_y/org_size_y)
+px = 367.06888344 * (render_size_width/org_size_width)
+py = 247.72159802 * (render_size_height/org_size_height)
 
 
 #  "42": {"cam_K": [1075.65091572, 0.0, 367.06888344, 0.0, 1073.90347929, 247.72159802, 0.0, 0.0, 1.0], "cam_R_w2c": [-0.529601, 0.848203, 0.00860459, 0.810945, 0.50926, -0.288136, -0.24878, -0.145619, -0.957551], "cam_t_w2c": [-5.19015, 23.2188, 789.59], "depth_scale": 0.1, "elev": 75, "mode": 0},
@@ -68,7 +68,7 @@ t = np.array([58.84511603, -90.2855017, 790.53840201])
 obj_path = "./data/tless-obj{0:02d}/cad/obj_{1:02d}.obj".format(obj_id, obj_id)
 model = inout.load_ply(obj_path.replace(".obj",".ply"))
 
-renderer = Renderer(model, (render_size_x,render_size_y),
+renderer = Renderer(model, (render_size_width,render_size_height),
                     K, surf_color=(1, 1, 1), mode='rgb')
 
 # # Convert R matrix from pytorch to opengl format
@@ -79,40 +79,20 @@ renderer = Renderer(model, (render_size_x,render_size_y),
 # R_opengl = np.dot(R,xy_flip)
 # R_opengl = np.transpose(R_opengl)
 
-
 opengl_rgb = renderer.render(R, t)
-
-#opengl_rgb = np.swapaxes(opengl_rgb, 0, 1)
-#cv2.imwrite("opengl_rgb.png", np.flip(opengl_rgb,axis=2))
-
 
 # -------- PyTorch3D render ----------------------
 device = torch.device("cuda:0")
 torch.cuda.set_device(device)
 
-#temp = render_size_x
-#render_size_x = render_size_y
-#render_size_y = temp
-
 cameras = PerspectiveCameras(device=device,
-                             focal_length=((fx, fy),),
-                             principal_point=((px, py),),
-                             image_size=((render_size_x, render_size_y),))
+                            focal_length=((fx, fy),),
+                            principal_point=((px, py),),
+                            image_size=((render_size_width, render_size_height),))
 
-K = cameras.get_projection_transform()
-print(K[0].get_matrix())
-K = K[0].get_matrix()
-
-#new_K = torch.t(K[0].get_matrix()[0]).unsqueeze(0)
-#print(new_K)
-
-cameras = PerspectiveCameras(device=device, K=K)
-
-K = cameras.get_projection_transform()
-print(K[0].get_matrix())
 
 raster_settings = RasterizationSettings(
-    image_size=(render_size_x, render_size_y),
+    image_size=(render_size_height, render_size_width),
     blur_radius= 0,
     faces_per_pixel= 20
 )
@@ -156,8 +136,8 @@ R_pytorch = np.transpose(R)
 R_pytorch = np.dot(R_pytorch,xy_flip)
 
 Rs = [R_pytorch]
-#t = t*np.array([-1.0,-1.0,1.0])
-t = np.array([t[1],t[0],t[2]])
+t = t*np.array([-1.0,-1.0,1.0])
+#t = np.array([t[1],t[0],t[2]])
 ts = [t]
 batch_R = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
 batch_T = torch.tensor(np.stack(ts), device=device, dtype=torch.float32) # Bx3
@@ -172,10 +152,13 @@ fig = plt.figure(figsize=(12,5))
 # Plot AE input
 plt.subplot(1, 3, 1)
 plt.imshow((opengl_rgb*255).astype(np.uint8))
+cv2.imwrite("opengl_rgb.png", np.flip(opengl_rgb,axis=2))
 plt.title("opengl rgb")
 
 # Plot depth map render from ground truth
-swapped_img = np.swapaxes(pytorch_depth[0].detach().cpu().numpy(),0,1)
+# swapped_img = np.swapaxes(pytorch_depth[0].detach().cpu().numpy(),0,1)
+swapped_img = pytorch_depth[0].detach().cpu().numpy()
+cv2.imwrite("pytorch_depth.png", swapped_img)
 plt.subplot(1, 3, 2)
 plt.imshow(swapped_img)#,
 plt.title("pytorch3d depth")
