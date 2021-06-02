@@ -66,16 +66,27 @@ class DatasetGenerator():
         self.render_size = 400 #self.img_size #3*self.img_size
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
-        # How do we update this K matrix to match the data and pytoch renderer?
-        #self.K = np.array([1075.65091572, 0, 214.06888344,
-        #                    0, 1073.90347929, 167.72159802,
-        #                    0, 0, 1]).reshape(3,3)
-        #self.K = np.array([1075.65, 0, self.render_size/2,
-        #                   0, 1073.90, self.render_size/2,
-        #                   0, 0, 1]).reshape(3,3)
-        self.K = np.array([1075.65091572, 0, self.render_size/2,
-                            0, 1073.90347929, self.render_size/2,
-                            0, 0, 1]).reshape(3,3)
+
+        obj_id = 10
+        render_size_width = 400
+        render_size_height = 400
+
+        org_size_width = 720.0
+        org_size_height = 540.0
+
+        render_size_width = int(render_size_width*(org_size_width/org_size_height))
+
+        fx = 1075.65091572 * (render_size_width/org_size_width)
+        fy = 1073.90347929 * (render_size_height/org_size_height)
+
+        px = 367.06888344 * (render_size_width/org_size_width)
+        py = 247.72159802 * (render_size_height/org_size_height)
+
+        self.K = np.array([fx, 0, px,
+                           0, fy, py,
+                           0, 0, 1]).reshape(3,3)
+        self.render_size_width = render_size_width
+        self.render_size_height = render_size_height
 
         self.augment = augment_imgs
         self.aug = self.setup_augmentation()
@@ -95,8 +106,8 @@ class DatasetGenerator():
                 print("Error! {0} is not a .ply file!".format(o))
                 exit()
             curr_model = inout.load_ply(o)
-            curr_rend= Renderer(curr_model, (self.render_size,self.render_size),
-                                self.K, surf_color=(1, 1, 1), mode='rgb', clip_far=4000)
+            curr_rend= Renderer(curr_model, (render_size_width,render_size_height),
+                                self.K, surf_color=(1, 1, 1), mode='rgb') #, clip_far=4000)
             self.renderers.append(curr_rend)
 
         self.pose_reuse = False
@@ -652,9 +663,12 @@ class DatasetGenerator():
                     obj_id = np.random.randint(0, len(self.renderers), size=1)[0]
                 else:
                     obj_id = 0
-                #t = torch.tensor([0.0, 0.0, self.dist[obj_id][-1]])
-                #t = torch.tensor([8.12247431, -18.39236880, 624.55950585])
-                t = torch.tensor([0, 0, 624.55950585])
+                #t = torch.tensor([0, 0, 624.55950585])
+                t = torch.tensor([58.84511603, -90.2855017, 790.53840201])
+                R = np.array([-0.78604536, -0.61810859, 0.00860459,
+                              -0.59386273, 0.7512021, -0.288136,
+                              0.17163531, -0.23159815, -0.957551]).reshape(3,3)
+                R = torch.tensor(R)
             else:
                 R = Rin[k]
                 t = tin
@@ -677,15 +691,17 @@ class DatasetGenerator():
             #t[1] += np.random.normal(0, std)
             #t[2] += np.random.normal(0, std*10)
             # flip for opengl
-            t_opengl = t * [-1, -1, 1]
+            #t_opengl = t * [-1, -1, 1]
 
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
-            xy_flip = np.eye(3, dtype=np.float)
-            xy_flip[0,0] = -1.0
-            xy_flip[1,1] = -1.0
-            R_opengl = np.dot(R,xy_flip)
-            R_opengl = np.transpose(R_opengl)
+            #xy_flip = np.eye(3, dtype=np.float)
+            #xy_flip[0,0] = -1.0
+            #xy_flip[1,1] = -1.0
+            #R_opengl = np.dot(R,xy_flip)
+            #R_opengl = np.transpose(R_opengl)
+            R_opengl = R
+            t_opengl = t
 
             # Randomize light position for rendering if enabled
             if(self.random_light is True):
@@ -736,6 +752,7 @@ class DatasetGenerator():
             else:
                 #cropped = org_img.copy()
                 cropped = extract_square_patch(org_img, [0, 0, self.render_size, self.render_size], pad_factor=1)
+                #cropped = extract_square_patch(org_img, [0, 0, self.render_size_width, self.render_size_height], pad_factor=1)
                 # test with some interpolation to get it to a 128*128 for encoder
 
             if(self.realistic_occlusions):
