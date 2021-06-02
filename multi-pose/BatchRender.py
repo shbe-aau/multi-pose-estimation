@@ -34,7 +34,7 @@ class BatchRender:
         self.method = render_method
         self.image_size = image_size
         self.points = None
-        self.norm_verts = norm_verts
+        self.norm_verts = False #norm_verts
 
         # Setup batch of meshes
         self.vertices, self.faces, self.textures = self.initMeshes()
@@ -68,6 +68,42 @@ class BatchRender:
             textures=batch_textures
         )
 
+        #print(batch_R)
+
+        fliped_R = []
+        for R in batch_R:
+            # Convert R matrix from opengl format to pytorch
+            # for rendering only!
+            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip[0,0] = -1.0
+            xy_flip[1,1] = -1.0
+            R = R.cpu().detach().numpy()
+            R_pytorch = np.transpose(R)
+            R_pytorch = np.dot(R_pytorch,xy_flip)
+            fliped_R.append(R_pytorch)
+
+        # R = np.array([-0.78604536, -0.61810859, 0.00860459,
+        #               -0.59386273, 0.7512021, -0.288136,
+        #               0.17163531, -0.23159815, -0.957551]).reshape(3,3)
+
+        # Convert R matrix from opengl format to pytorch
+        # for rendering only!
+        # xy_flip = np.eye(3, dtype=np.float)
+        # xy_flip[0,0] = -1.0
+        # xy_flip[1,1] = -1.0
+        # R_pytorch = np.transpose(R)
+        # R_pytorch = np.dot(R_pytorch,xy_flip)
+        # Rs = [R_pytorch]
+
+        batch_R = torch.tensor(np.stack(fliped_R), device=self.device, dtype=torch.float32)
+        #batch_R = torch.tensor(np.stack(Rs), device=self.device, dtype=torch.float32)
+        #print(batch_R)
+        t = np.array([58.84511603, -90.2855017, 790.53840201])
+        t = t*np.array([-1.0,-1.0,1.0])
+        #print(t)
+        ts = [t]*len(ts)
+        #print(ts)
+        batch_T = torch.tensor(np.stack(ts), device=self.device, dtype=torch.float32)
         images = self.renderer(meshes_world=mesh, R=batch_R, T=batch_T)
         if(self.method == "soft-silhouette"):
             images = images[..., 3]
@@ -112,27 +148,32 @@ class BatchRender:
 
 
     def initRender(self, method, image_size):
-        #cameras = OpenGLPerspectiveCameras(device=self.device, fov=15)
-        #K = cameras.get_projection_transform()
-        #print(K.shape)
-        #print(K[0].get_matrix())
-        #exit()
+        obj_id = 10
+        render_size_width = 400
+        render_size_height = 400
 
-        #K = np.array([np.array([1075.65091572, 0, 641.068883438, 0,
-        #                     0, 1073.90347929, 507.72159802, 0,
-        #                     0, 0, 0, 1,
-        #                     0, 0, 1, 0]).reshape(4,4)]*64)
-        #print(K.shape)
-        #print(K[0])
+        org_size_width = 720.0
+        org_size_height = 540.0
+
+        render_size_width = int(render_size_width*(org_size_width/org_size_height))
+
+        fx = 1075.65091572 * (render_size_width/org_size_width)
+        fy = 1073.90347929 * (render_size_height/org_size_height)
+
+        px = 367.06888344 * (render_size_width/org_size_width)
+        py = 247.72159802 * (render_size_height/org_size_height)
 
         #cameras = FoVPerspectiveCameras(device=self.device, K=K)
         #cameras = PerspectiveCameras(device=self.device, K=K, image_size=((1280,1024),))
-        scale_factor1 = 1280.0/400.0
-        scale_factor2 = 1024.0/400.0
+        #scale_factor1 = 1280.0/400.0
+        #scale_factor2 = 1024.0/400.0
         #cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=((214.06888344*scale_factor2, 167.72159802*scale_factor2),), image_size=((1024,1024),))
         #cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=(((400-214.06888344)*scale_factor2, (400-167.72159802)*scale_factor2),), image_size=((1024,1024),))
         #cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=((167.72159802*scale_factor1, 214.06888344*scale_factor2),), image_size=((1024,1024),))
-        cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=((200*scale_factor2, 200*scale_factor2),), image_size=((1024,1024),))
+        cameras = PerspectiveCameras(device=self.device,
+                                     focal_length=((fx, fy),),
+                                     principal_point=((px, py),),
+                                     image_size=((render_size_width,render_size_height),))
         K = cameras.get_projection_transform()
         print(K[0].get_matrix())
 
@@ -188,7 +229,7 @@ class BatchRender:
             )
         elif(method=="hard-depth"):
             raster_settings = RasterizationSettings(
-                image_size=image_size,
+                image_size=(render_size_height, render_size_width), #OBS! TODO: change back order when bug fixed
                 blur_radius= 0,
                 faces_per_pixel= 20
             )

@@ -92,7 +92,7 @@ cameras = PerspectiveCameras(device=device,
 
 
 raster_settings = RasterizationSettings(
-    image_size=(render_size_height, render_size_width),
+    image_size=(render_size_height, render_size_width), #OBS! TODO: change back order when bug fixed
     blur_radius= 0,
     faces_per_pixel= 20
 )
