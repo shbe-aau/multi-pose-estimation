@@ -79,6 +79,7 @@ class DatasetGenerator():
         fx = 1075.65091572 * (render_size_width/org_size_width)
         fy = 1073.90347929 * (render_size_height/org_size_height)
 
+        # These values should be half of render_size_width/height during training
         px = 367.06888344 * (render_size_width/org_size_width)
         py = 247.72159802 * (render_size_height/org_size_height)
 
@@ -750,10 +751,14 @@ class DatasetGenerator():
 
                 cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
             else:
-                #cropped = org_img.copy()
-                cropped = extract_square_patch(org_img, [0, 0, self.render_size, self.render_size], pad_factor=1)
-                #cropped = extract_square_patch(org_img, [0, 0, self.render_size_width, self.render_size_height], pad_factor=1)
-                # test with some interpolation to get it to a 128*128 for encoder
+                centercrop = True
+                if centercrop:
+                    min_size = min(self.render_size_width, self.render_size_height)
+                    x0 = 0 + (self.render_size_width-min_size)/2
+                    y0 = 0 + (self.render_size_height-min_size)/2
+                    cropped = extract_square_patch(org_img, [x0, y0, min_size, min_size], pad_factor=1)
+                else:
+                    cropped = extract_square_patch(org_img, [0, 0, self.render_size, self.render_size], pad_factor=1)
 
             if(self.realistic_occlusions):
                 # Apply random renders behind
