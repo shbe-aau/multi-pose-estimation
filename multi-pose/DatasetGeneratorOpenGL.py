@@ -67,7 +67,6 @@ class DatasetGenerator():
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
 
-        obj_id = 10
         render_size_width = 400
         render_size_height = 400
 
@@ -458,15 +457,11 @@ class DatasetGenerator():
         R = R[:3,:3]
 
         # Convert R matrix from opengl to pytorch format
-        xy_flip = np.eye(3, dtype=np.float)
-        xy_flip[0,0] = -1.0
-        xy_flip[1,1] = -1.0
-        R_conv = np.transpose(R)
-        R_conv = np.dot(R_conv,xy_flip)
+        R_conv = conv_R_opengl2pytorch_np(R)
 
         # Convert to tensors
-        R = torch.from_numpy(R_conv)
-        return R
+        R_py = torch.from_numpy(R_conv)
+        return R, R_py # lets return both opengl and pytorch versions, np and torch format respectively
 
     def quat_sampling(self):
         R = get_sampled_rotation_matrices_by_quat(1).squeeze()
@@ -644,7 +639,9 @@ class DatasetGenerator():
                     continue
         return images
 
-
+    # TODO: Decide rotation matrix type expected (opengl vs pytorch)
+    #       For now i have let outside stuff rot and for the method we use return both
+    #       Other sampling methods are currently broken
     def generate_image_batch(self, Rin=None, tin=None, augment=True):
         # Generate random poses
         curr_Rs = []
@@ -659,17 +656,12 @@ class DatasetGenerator():
         for k in np.arange(self.batch_size):
             obj_id = 0
             if Rin is None:
-                R = self.pose_sampling()
+                R_opengl, R_pytorch = self.pose_sampling()
+                t = np.array([0, 0, 790.53840201])
                 if(len(self.renderers) > 1):
                     obj_id = np.random.randint(0, len(self.renderers), size=1)[0]
                 else:
                     obj_id = 0
-                #t = torch.tensor([0, 0, 624.55950585])
-                t = torch.tensor([58.84511603, -90.2855017, 790.53840201])
-                R = np.array([-0.78604536, -0.61810859, 0.00860459,
-                              -0.59386273, 0.7512021, -0.288136,
-                              0.17163531, -0.23159815, -0.957551]).reshape(3,3)
-                R = torch.tensor(R)
             else:
                 R = Rin[k]
                 t = tin
@@ -682,27 +674,26 @@ class DatasetGenerator():
                         #random.shuffle(self.hard_samples)
                         R = self.hard_samples.pop(int(rani))
 
-            R = R.detach().cpu().numpy()
-            t = t.detach().cpu().numpy()
-            t = t.copy()
+            if False: # local testing override t and R matrix in opengl format
+                t = np.array([58.84511603, -90.2855017, 790.53840201])
+                R_opengl = np.array([-0.78604536, -0.61810859, 0.00860459,
+                                     -0.59386273, 0.7512021, -0.288136,
+                                     0.17163531, -0.23159815, -0.957551]).reshape(3,3)
+
+                # Convert R matrix from opengl to pytorch format
+                R_pytorch = conv_R_opengl2pytorch_np(R_opengl)
+                R_pytorch = torch.from_numpy(R_pytorch)
 
             # change t by gaussian noise scaled to a std of 1% of z scale for x,y
-            std = t[2]*0.02
-            #t[0] += np.random.normal(0, std)
-            #t[1] += np.random.normal(0, std)
-            #t[2] += np.random.normal(0, std*10)
-            # flip for opengl
-            #t_opengl = t * [-1, -1, 1]
+            if False:
+                std = t[2]*0.02
+                t[0] += np.random.normal(0, std)
+                t[1] += np.random.normal(0, std)
+                t[2] += np.random.normal(0, std*10)
 
-            # Convert R matrix from pytorch to opengl format
-            # for rendering only!
-            #xy_flip = np.eye(3, dtype=np.float)
-            #xy_flip[0,0] = -1.0
-            #xy_flip[1,1] = -1.0
-            #R_opengl = np.dot(R,xy_flip)
-            #R_opengl = np.transpose(R_opengl)
-            R_opengl = R
-            t_opengl = t
+            t_opengl = torch.tensor(t)
+            # flip for pytorch
+            t_pytorch = t * [-1, -1, 1]
 
             # Randomize light position for rendering if enabled
             if(self.random_light is True):
@@ -713,8 +704,8 @@ class DatasetGenerator():
             # Render images
             ren_rgb = self.renderers[obj_id].render(R_opengl, t_opengl, random_light_pos)
 
-            curr_Rs.append(R)
-            curr_ts.append(t)
+            curr_Rs.append(R_pytorch)
+            curr_ts.append(t_pytorch)
             curr_ids.append(obj_id)
 
             image_renders.append(ren_rgb)

@@ -129,11 +129,7 @@ mesh = Meshes(
 
 # Convert R matrix from opengl format to pytorch
 # for rendering only!
-xy_flip = np.eye(3, dtype=np.float)
-xy_flip[0,0] = -1.0
-xy_flip[1,1] = -1.0
-R_pytorch = np.transpose(R)
-R_pytorch = np.dot(R_pytorch,xy_flip)
+R_pytorch = conv_R_opengl2pytorch_np(R)
 
 Rs = [R_pytorch]
 t = t*np.array([-1.0,-1.0,1.0])

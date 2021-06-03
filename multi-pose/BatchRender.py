@@ -23,6 +23,9 @@ from pytorch3d.renderer.cameras import FoVPerspectiveCameras, PerspectiveCameras
 from pytorch3d.ops import sample_points_from_meshes
 from CustomRenderers import *
 
+from utils.utils import *
+from utils.tools import *
+
 class BatchRender:
     def __init__(self, obj_paths, device, batch_size=12, faces_per_pixel=16,
                  render_method="silhouette", image_size=256, norm_verts=False):
@@ -68,41 +71,6 @@ class BatchRender:
             textures=batch_textures
         )
 
-        #print(batch_R)
-
-        fliped_R = []
-        for R in batch_R:
-            # Convert R matrix from opengl format to pytorch
-            # for rendering only!
-            xy_flip = np.eye(3, dtype=np.float)
-            xy_flip[0,0] = -1.0
-            xy_flip[1,1] = -1.0
-            R = R.cpu().detach().numpy()
-            R_pytorch = np.transpose(R)
-            R_pytorch = np.dot(R_pytorch,xy_flip)
-            fliped_R.append(R_pytorch)
-
-        # R = np.array([-0.78604536, -0.61810859, 0.00860459,
-        #               -0.59386273, 0.7512021, -0.288136,
-        #               0.17163531, -0.23159815, -0.957551]).reshape(3,3)
-
-        # Convert R matrix from opengl format to pytorch
-        # for rendering only!
-        # xy_flip = np.eye(3, dtype=np.float)
-        # xy_flip[0,0] = -1.0
-        # xy_flip[1,1] = -1.0
-        # R_pytorch = np.transpose(R)
-        # R_pytorch = np.dot(R_pytorch,xy_flip)
-        # Rs = [R_pytorch]
-
-        batch_R = torch.tensor(np.stack(fliped_R), device=self.device, dtype=torch.float32)
-        #batch_R = torch.tensor(np.stack(Rs), device=self.device, dtype=torch.float32)
-        #print(batch_R)
-        t = np.array([58.84511603, -90.2855017, 790.53840201])
-        t = t*np.array([-1.0,-1.0,1.0])
-        #print(t)
-        ts = [t]*len(ts)
-        #print(ts)
         batch_T = torch.tensor(np.stack(ts), device=self.device, dtype=torch.float32)
         images = self.renderer(meshes_world=mesh, R=batch_R, T=batch_T)
         if(self.method == "soft-silhouette"):
@@ -148,7 +116,6 @@ class BatchRender:
 
 
     def initRender(self, method, image_size):
-        obj_id = 10
         render_size_width = 400
         render_size_height = 400
 

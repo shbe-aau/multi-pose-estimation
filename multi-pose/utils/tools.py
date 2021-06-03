@@ -142,8 +142,8 @@ def stereographic_unproject_old(a):
 #in a batch*5, axis int
 def stereographic_unproject(a, axis=None):
     """
-	Inverse of stereographic projection: increases dimension by one.
-	"""
+    Inverse of stereographic projection: increases dimension by one.
+    """
     batch=a.shape[0]
     if axis is None:
         axis = a.shape[1]
@@ -462,3 +462,25 @@ def compute_quaternions_from_rotation_matrices(matrices):
     quats = torch.cat( (w.view(batch,1), x.view(batch, 1),y.view(batch, 1), z.view(batch, 1) ), 1   )
 
     return quats
+
+def conv_R_opengl2pytorch_np(R):
+    # Convert R matrix from opengl to pytorch format
+    xy_flip = np.eye(3, dtype=np.float)
+    xy_flip[0,0] = -1.0
+    xy_flip[1,1] = -1.0
+    R_pytorch = np.transpose(R)
+    R_pytorch = np.dot(R_pytorch,xy_flip)
+
+    # Convert to tensors
+    #R = torch.from_numpy(R_conv)
+    return R_pytorch
+
+def conv_R_pytorch2opengl_np(R):
+    # Convert R matrix from pytorch to opengl format
+    xy_flip = np.eye(3, dtype=np.float)
+    xy_flip[0,0] = -1.0
+    xy_flip[1,1] = -1.0
+    R_opengl = np.dot(R,xy_flip)
+    R_opengl = np.transpose(R_opengl)
+
+    return R_opengl
