@@ -27,15 +27,14 @@ from utils.utils import *
 from utils.tools import *
 
 class BatchRender:
-    def __init__(self, obj_paths, device, batch_size=12, faces_per_pixel=16,
-                 render_method="silhouette", image_size=256, norm_verts=False):
+    def __init__(self, obj_paths, device, camera_params, batch_size=12, faces_per_pixel=16,
+                 render_method="silhouette", norm_verts=False):
         self.batch_size = batch_size
         self.faces_per_pixel = faces_per_pixel
         self.batch_indeces = np.arange(self.batch_size)
         self.obj_paths = obj_paths
         self.device = device
         self.method = render_method
-        self.image_size = image_size
         self.points = None
         self.norm_verts = False #norm_verts
 
@@ -43,7 +42,7 @@ class BatchRender:
         self.vertices, self.faces, self.textures = self.initMeshes()
 
         # Initialize the renderer
-        self.renderer = self.initRender(image_size=image_size, method=self.method)
+        self.renderer = self.initRender(camera_params, method=self.method)
 
     def renderBatch(self, Rs, ts, ids=[]):
         if(type(Rs) is list):
@@ -115,84 +114,16 @@ class BatchRender:
         return vertices, faces, textures
 
 
-    def initRender(self, method, image_size):
-        render_width = 400
-        render_height = 400
-
-        orig_width = 720.0
-        orig_height = 540.0
-
-        render_width = int(render_width*(orig_width/orig_height))
-
-        fx = 1075.65091572 * (render_width/orig_width)
-        fy = 1073.90347929 * (render_height/orig_height)
-
-        # These values should be half of render_width/height during training
-        px = render_width/2
-        py = render_height/2
-
-        if False:  # local testing override for using a non-centered principal point
-            px = 367.06888344 * (render_width/orig_width)
-            py = 247.72159802 * (render_height/orig_height)
+    def initRender(self, camera_params, method):
+        render_width = camera_params['render_width']
+        render_height = camera_params['render_height']
 
         cameras = PerspectiveCameras(device=self.device,
-                                     focal_length=((fx, fy),),
-                                     principal_point=((px, py),),
+                                     focal_length=((camera_params['fx'], camera_params['fy']),),
+                                     principal_point=((camera_params['px'], camera_params['py']),),
                                      image_size=((render_width,render_height),))
-        K = cameras.get_projection_transform()
-        print(K[0].get_matrix())
 
-        if(method=="soft-silhouette"):
-            blend_params = BlendParams(sigma=1e-7, gamma=1e-7)
-
-            raster_settings = RasterizationSettings(
-                image_size=image_size,
-                blur_radius=np.log(1. / 1e-7 - 1.) * blend_params.sigma,
-                faces_per_pixel=self.faces_per_pixel
-            )
-
-            renderer = MeshRenderer(
-                rasterizer=MeshRasterizer(
-                    cameras=cameras,
-                    raster_settings=raster_settings
-                ),
-                shader=SoftSilhouetteShader(blend_params=blend_params)
-            )
-        elif(method=="hard-silhouette"):
-            blend_params = BlendParams(sigma=1e-7, gamma=1e-7)
-
-            raster_settings = RasterizationSettings(
-                image_size=image_size,
-                blur_radius=np.log(1. / 1e-7 - 1.) * blend_params.sigma,
-                faces_per_pixel=1
-            )
-
-            renderer = MeshRenderer(
-                rasterizer=MeshRasterizer(
-                    cameras=cameras,
-                    raster_settings=raster_settings
-                ),
-                shader=SoftSilhouetteShader(blend_params=blend_params)
-            )
-        elif(method=="soft-depth"):
-            # Soft Rasterizer - from https://github.com/facebookresearch/pytorch3d/issues/95
-            #blend_params = BlendParams(sigma=1e-7, gamma=1e-7)
-            blend_params = BlendParams(sigma=1e-3, gamma=1e-4)
-            raster_settings = RasterizationSettings(
-                image_size=image_size,
-                #blur_radius= np.log(1. / 1e-7 - 1.) * blend_params.sigma,
-                blur_radius= np.log(1. / 1e-3 - 1.) * blend_params.sigma,
-                faces_per_pixel=self.faces_per_pixel
-            )
-
-            renderer = MeshRenderer(
-                rasterizer=MeshRasterizer(
-                    cameras=cameras,
-                    raster_settings=raster_settings
-                ),
-                shader=SoftDepthShader(blend_params=blend_params)
-            )
-        elif(method=="hard-depth"):
+        if(method=="hard-depth"):
             raster_settings = RasterizationSettings(
                 image_size=(render_height, render_width), #OBS! TODO: change back order when bug fixed
                 blur_radius= 0,
@@ -206,73 +137,6 @@ class BatchRender:
                 ),
                 shader=HardDepthShader()
             )
-        elif(method=="blurry-depth"):
-            # Soft Rasterizer - from https://github.com/facebookresearch/pytorch3d/issues/95
-            blend_params = BlendParams(sigma=1e-4, gamma=1e-4)
-            raster_settings = RasterizationSettings(
-                image_size=image_size,
-                blur_radius= np.log(1. / 1e-4 - 1.) * blend_params.sigma,
-                faces_per_pixel=self.faces_per_pixel
-            )
-
-            renderer = MeshRenderer(
-                rasterizer=MeshRasterizer(
-                    cameras=cameras,
-                    raster_settings=raster_settings
-                ),
-                shader=SoftDepthShader(blend_params=blend_params)
-            )
-        elif(method=="soft-phong"):
-            blend_params = BlendParams(sigma=1e-3, gamma=1e-3)
-
-            raster_settings = RasterizationSettings(
-                image_size=image_size,
-                blur_radius= np.log(1. / 1e-3 - 1.) * blend_params.sigma,
-                faces_per_pixel=self.faces_per_pixel
-            )
-
-            # lights = DirectionalLights(device=self.device,
-            #                            ambient_color=[[0.25, 0.25, 0.25]],
-            #                            diffuse_color=[[0.6, 0.6, 0.6]],
-            #                            specular_color=[[0.15, 0.15, 0.15]],
-            #                            direction=[[0.0, 1.0, 0.0]])
-
-            lights = DirectionalLights(device=self.device,
-                                       direction=[[0.0, 1.0, 0.0]])
-
-            renderer = MeshRenderer(
-                rasterizer=MeshRasterizer(
-                    cameras=cameras,
-                    raster_settings=raster_settings
-                ),
-                shader=SoftPhongShader(device=self.device,
-                                       blend_params = blend_params,
-                                       lights=lights)
-            )
-
-        elif(method=="hard-phong"):
-            blend_params = BlendParams(sigma=1e-8, gamma=1e-8)
-
-            raster_settings = RasterizationSettings(
-                image_size=image_size,
-                blur_radius=0.0,
-                faces_per_pixel=1
-            )
-
-            lights = DirectionalLights(device=self.device,
-                                       ambient_color=[[0.25, 0.25, 0.25]],
-                                       diffuse_color=[[0.6, 0.6, 0.6]],
-                                       specular_color=[[0.15, 0.15, 0.15]],
-                                       direction=[[-1.0, -1.0, 1.0]])
-            renderer = MeshRenderer(
-                rasterizer=MeshRasterizer(
-                    cameras=cameras,
-                    raster_settings=raster_settings
-                ),
-                shader=HardPhongShader(device=self.device, lights=lights)
-            )
-
-
         else:
             print("Unknown render method!")
             return None
