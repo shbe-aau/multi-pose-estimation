@@ -52,7 +52,8 @@ def Loss(predicted_poses,
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
         num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
-        pose_start = num_views
+        trans_weight = config.getfloat('Loss_parameters', 'TRANSLATION_WEIGHT', fallback=0.000001)
+        pose_start = num_views+3
         pose_end = pose_start + 6
 
         # Prepare gt images
@@ -62,6 +63,8 @@ def Loss(predicted_poses,
 
         losses = []
         confs = predicted_poses[:,:num_views]
+        pred_ts = predicted_poses[:,num_views:pose_start]
+        pred_ts[:,-1] = pred_ts[:,-1] + 790.0
         prev_poses = []
         pose_losses = []
         for i,v in enumerate(views):
@@ -76,7 +79,7 @@ def Loss(predicted_poses,
             pose_end = pose_start + 6
 
             # Render predicted images
-            imgs = renderer.renderBatch(Rs_predicted, ts, ids)
+            imgs = renderer.renderBatch(Rs_predicted, pred_ts, ids)
             predicted_images.append(imgs)
             gt_images.append(gt_imgs)
 
@@ -112,7 +115,13 @@ def Loss(predicted_poses,
             # Add current predicted poses to list of previous ones
             prev_poses.append(Rs_predicted)
 
-
+        # Calculate translation loss
+        trans_loss_func = torch.nn.MSELoss(reduction='none')
+        ts_tensor = torch.tensor(np.stack(ts), device=renderer.device, dtype=torch.float32)
+        trans_losses = trans_loss_func(pred_ts, ts_tensor)
+        trans_losses = torch.mean(trans_losses, dim=1)
+        #print("translation loss: ", trans_losses)
+        #print("translation loss: ", torch.mean(trans_losses)*trans_weight)
 
         # Concat different views
         gt_imgs = torch.cat(gt_images, dim=1)
@@ -128,7 +137,7 @@ def Loss(predicted_poses,
         dbg("depth loss {}".format(torch.mean(depth_losses)), dbg_losses)
         dbg("pose loss  {}".format(torch.mean(pose_losses)), dbg_losses)
 
-        batch_loss = depth_losses + pose_losses
+        batch_loss = depth_losses + pose_losses + trans_weight*trans_losses
         batch_loss = batch_loss.unsqueeze(-1)
         loss = torch.mean(batch_loss)
         return loss, batch_loss, gt_imgs, predicted_imgs

@@ -13,7 +13,8 @@ class Model(nn.Module):
 
         self.weight_init_name = weight_init_name
         self.num_views = num_views
-        self.output_size = self.num_views*(6+1)
+        self.output_size = self.num_views*(6+1)+3
+        # output is: confs,translation,poses
 
         # Upscale lantent vector
         self.l01 = nn.Linear(128,128)
