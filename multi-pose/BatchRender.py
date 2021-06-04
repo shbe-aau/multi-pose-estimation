@@ -127,16 +127,14 @@ class BatchRender:
         fx = 1075.65091572 * (render_size_width/org_size_width)
         fy = 1073.90347929 * (render_size_height/org_size_height)
 
-        px = 367.06888344 * (render_size_width/org_size_width)
-        py = 247.72159802 * (render_size_height/org_size_height)
+        # These values should be half of render_size_width/height during training
+        px = render_size_width/2
+        py = render_size_height/2
 
-        #cameras = FoVPerspectiveCameras(device=self.device, K=K)
-        #cameras = PerspectiveCameras(device=self.device, K=K, image_size=((1280,1024),))
-        #scale_factor1 = 1280.0/400.0
-        #scale_factor2 = 1024.0/400.0
-        #cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=((214.06888344*scale_factor2, 167.72159802*scale_factor2),), image_size=((1024,1024),))
-        #cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=(((400-214.06888344)*scale_factor2, (400-167.72159802)*scale_factor2),), image_size=((1024,1024),))
-        #cameras = PerspectiveCameras(device=self.device, focal_length=((1075.65091572, 1073.90347929),), principal_point=((167.72159802*scale_factor1, 214.06888344*scale_factor2),), image_size=((1024,1024),))
+        if False:  # local testing override for using a non-centered principal point
+            px = 367.06888344 * (render_size_width/org_size_width)
+            py = 247.72159802 * (render_size_height/org_size_height)
+
         cameras = PerspectiveCameras(device=self.device,
                                      focal_length=((fx, fy),),
                                      principal_point=((px, py),),
