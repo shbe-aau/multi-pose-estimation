@@ -116,29 +116,29 @@ class BatchRender:
 
 
     def initRender(self, method, image_size):
-        render_size_width = 400
-        render_size_height = 400
+        render_width = 400
+        render_height = 400
 
-        org_size_width = 720.0
-        org_size_height = 540.0
+        orig_width = 720.0
+        orig_height = 540.0
 
-        render_size_width = int(render_size_width*(org_size_width/org_size_height))
+        render_width = int(render_width*(orig_width/orig_height))
 
-        fx = 1075.65091572 * (render_size_width/org_size_width)
-        fy = 1073.90347929 * (render_size_height/org_size_height)
+        fx = 1075.65091572 * (render_width/orig_width)
+        fy = 1073.90347929 * (render_height/orig_height)
 
-        # These values should be half of render_size_width/height during training
-        px = render_size_width/2
-        py = render_size_height/2
+        # These values should be half of render_width/height during training
+        px = render_width/2
+        py = render_height/2
 
         if False:  # local testing override for using a non-centered principal point
-            px = 367.06888344 * (render_size_width/org_size_width)
-            py = 247.72159802 * (render_size_height/org_size_height)
+            px = 367.06888344 * (render_width/orig_width)
+            py = 247.72159802 * (render_height/orig_height)
 
         cameras = PerspectiveCameras(device=self.device,
                                      focal_length=((fx, fy),),
                                      principal_point=((px, py),),
-                                     image_size=((render_size_width,render_size_height),))
+                                     image_size=((render_width,render_height),))
         K = cameras.get_projection_transform()
         print(K[0].get_matrix())
 
@@ -194,7 +194,7 @@ class BatchRender:
             )
         elif(method=="hard-depth"):
             raster_settings = RasterizationSettings(
-                image_size=(render_size_height, render_size_width), #OBS! TODO: change back order when bug fixed
+                image_size=(render_height, render_width), #OBS! TODO: change back order when bug fixed
                 blur_radius= 0,
                 faces_per_pixel= 20
             )
