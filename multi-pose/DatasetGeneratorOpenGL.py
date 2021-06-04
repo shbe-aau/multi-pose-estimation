@@ -581,68 +581,6 @@ class DatasetGenerator():
             R = R.squeeze()
         return R
 
-    def generate_random_renders(self,num):
-        image_renders = []
-        images = []
-
-        for k in np.arange(num):
-            print("Rendering random objects: ", k)
-            R, t = self.pose_sampling()
-
-            R = R.detach().cpu().numpy()
-            t = t.detach().cpu().numpy()
-
-            # Convert R matrix from pytorch to opengl format
-            # for rendering only!
-            xy_flip = np.eye(3, dtype=np.float)
-            xy_flip[0,0] = -1.0
-            xy_flip[1,1] = -1.0
-            R_opengl = np.dot(R,xy_flip)
-            R_opengl = np.transpose(R_opengl)
-
-            # Render images
-            random_id = np.random.randint(1,31)
-            obj_path = "./data/tless-obj{0:02d}/cad/obj_{1:02d}.obj".format(random_id, random_id)
-            model = inout.load_ply(obj_path.replace(".obj",".ply"))
-
-            # Normalize pts
-            verts = model['pts']
-            center = np.mean(verts, axis=0)
-            verts_normed = verts - center
-            scale = np.max(np.max(np.abs(verts_normed), axis=0))
-            verts_normed = (verts_normed / scale)
-            model['pts'] = verts_normed*100.0
-
-            renderer = Renderer(model, (self.render_size,self.render_size),
-                                     self.K, surf_color=(1, 1, 1), mode='rgb')
-
-
-            ren_rgb = renderer.render(R_opengl, t)
-            image_renders.append(ren_rgb)
-
-            for i in range(10):
-                # Calc bounding box and crop image
-                org_img = image_renders[k]
-                ys, xs = np.nonzero(org_img[:,:,0] > 0)
-                obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
-
-                # Add relative offset when cropping - like Sundermeyer
-                x, y, w, h = obj_bb
-
-                rand_trans_x = np.random.uniform(-2.0, 2.0) * w
-                rand_trans_y = np.random.uniform(-2.0, 2.0) * h
-
-                scale = np.random.uniform(0.2, 0.8)
-                obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,
-                                            w*scale,h*scale])
-
-                try:
-                    cropped = extract_square_patch(org_img, obj_bb_off)
-                    images.append(cropped)
-                except:
-                    continue
-        return images
-
     # TODO: Decide rotation matrix type expected (opengl vs pytorch)
     #       For now i have let outside stuff rot and for the method we use return both
     #       Other sampling methods are currently broken
