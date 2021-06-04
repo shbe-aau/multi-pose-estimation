@@ -79,8 +79,12 @@ class DatasetGenerator():
         fy = 1073.90347929 * (render_size_height/org_size_height)
 
         # These values should be half of render_size_width/height during training
-        px = 367.06888344 * (render_size_width/org_size_width)
-        py = 247.72159802 * (render_size_height/org_size_height)
+        px = render_size_width/2
+        py = render_size_height/2
+
+        if False:  # local testing override for using a non-centered principal point
+            px = 367.06888344 * (render_size_width/org_size_width)
+            py = 247.72159802 * (render_size_height/org_size_height)
 
         self.K = np.array([fx, 0, px,
                            0, fy, py,
@@ -685,7 +689,7 @@ class DatasetGenerator():
                 R_pytorch = torch.from_numpy(R_pytorch)
 
             # change t by gaussian noise scaled to a std of 1% of z scale for x,y
-            if False:
+            if True:
                 std = t[2]*0.02
                 t[0] += np.random.normal(0, std)
                 t[1] += np.random.normal(0, std)
