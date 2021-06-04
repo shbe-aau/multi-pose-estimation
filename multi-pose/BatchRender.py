@@ -70,7 +70,6 @@ class BatchRender:
             textures=batch_textures
         )
 
-        batch_T = torch.tensor(np.stack(ts), device=self.device, dtype=torch.float32)
         images = self.renderer(meshes_world=mesh, R=batch_R, T=batch_T)
         if(self.method == "soft-silhouette"):
             images = images[..., 3]
