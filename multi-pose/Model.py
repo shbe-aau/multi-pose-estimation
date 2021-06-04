@@ -16,7 +16,9 @@ class Model(nn.Module):
         self.weight_init_name = weight_init_name
         self.num_views = num_views
         self.num_objects = num_objects
-        self.output_size = self.num_views*(6+1)
+        self.output_size = self.num_views*(6+1)+3
+        # output is: confs,translation,poses for each object
+        # TODO: Determine if shared translation for all object types works better
         self.output_size *= self.num_objects
 
         # Place-holder for last FC layer in the encoder
