@@ -484,3 +484,27 @@ def conv_R_pytorch2opengl_np(R):
     R_opengl = np.transpose(R_opengl)
 
     return R_opengl
+
+def calc_camera_parameters(render_width,render_height, orig_width, orig_height, fx, fy):
+    render_width = int(render_width*(orig_width/orig_height))
+
+    fx = fx * (render_width/orig_width)
+    fy = fy * (render_height/orig_height)
+
+    # These values should be half of render_width/height during training
+    px = render_width/2
+    py = render_height/2
+
+    if False:  # local testing override for using a non-centered principal point
+        px = 367.06888344 * (render_width/orig_width)
+        py = 247.72159802 * (render_height/orig_height)
+
+    camera_params = {'render_width': render_width,
+                     'render_height': render_height,
+                     'orig_width': orig_width,
+                     'orig_height': orig_height,
+                     'fx': fx,
+                     'fy': fy,
+                     'px': px,
+                     'py': py}
+    return camera_params

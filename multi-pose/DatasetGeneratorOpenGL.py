@@ -49,7 +49,7 @@ from utils.sundermeyer.pysixd import view_sampler
 class DatasetGenerator():
 
     def __init__(self, background_path, obj_paths, obj_distance, batch_size,
-                 _, device, sampling_method="sphere", max_rel_offset=0.2, augment_imgs=True,
+                 _, device, camera_params, sampling_method="sphere", max_rel_offset=0.0, augment_imgs=True,
                  random_light=True, num_bgs=5000, seed=None):
 
         self.random_light = random_light
@@ -62,41 +62,21 @@ class DatasetGenerator():
         self.obj_paths = obj_paths
         self.batch_size = batch_size
         self.dist = obj_distance
-        self.img_size = 128
-        self.render_size = 400 #self.img_size #3*self.img_size
+        self.out_size = 128
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
 
-        render_width = 400
-        render_height = 400
-
-        orig_width = 720.0
-        orig_height = 540.0
-
-        render_width = int(render_width*(orig_width/orig_height))
-
-        fx = 1075.65091572 * (render_width/orig_width)
-        fy = 1073.90347929 * (render_height/orig_height)
-
-        # These values should be half of render_width/height during training
-        px = render_width/2
-        py = render_height/2
-
-        if False:  # local testing override for using a non-centered principal point
-            px = 367.06888344 * (render_width/orig_width)
-            py = 247.72159802 * (render_height/orig_height)
-
-        self.K = np.array([fx, 0, px,
-                           0, fy, py,
+        self.K = np.array([camera_params['fx'], 0, camera_params['px'],
+                           0, camera_params['fy'], camera_params['py'],
                            0, 0, 1]).reshape(3,3)
-        self.render_width = render_width
-        self.render_height = render_height
+        self.render_width = camera_params['render_width']
+        self.render_height = camera_params['render_height']
 
         self.augment = augment_imgs
         self.aug = self.setup_augmentation()
 
         self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
-                                               self.img_size, self.img_size)
+                                               self.out_size, self.out_size)
 
         # Stuff for viewsphere aug sampling
         self.view_sphere = None
@@ -110,7 +90,7 @@ class DatasetGenerator():
                 print("Error! {0} is not a .ply file!".format(o))
                 exit()
             curr_model = inout.load_ply(o)
-            curr_rend= Renderer(curr_model, (render_width,render_height),
+            curr_rend= Renderer(curr_model, (self.render_width,self.render_height),
                                 self.K, surf_color=(1, 1, 1), mode='rgb') #, clip_far=4000)
             self.renderers.append(curr_rend)
 
@@ -662,9 +642,9 @@ class DatasetGenerator():
             org_img = image_renders[k]
             ys, xs = np.nonzero(org_img[:,:,0] > 0)
             if False and len(ys) != 0 and len(xs) != 0:
-                obj_bb = calc_2d_bbox(xs,ys,[self.render_size,self.render_size])
+                obj_bb = calc_2d_bbox(xs,ys,[self.render_width,self.render_height])
             else:
-                obj_bb = [0, 0, self.render_size, self.render_size]
+                obj_bb = [0, 0, self.render_width, self.render_height]
 
             # Add relative offset when cropping - like Sundermeyer
             x, y, w, h = obj_bb
@@ -682,16 +662,16 @@ class DatasetGenerator():
                 scale = np.random.uniform(-self.max_rel_scale, self.max_rel_scale)
                 pad_factor = pad_factor + scale
 
-                cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor)
+                cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor, resize=(self.out_size,self.out_size))
             else:
                 centercrop = True
                 if centercrop:
                     min_size = min(self.render_width, self.render_height)
                     x0 = 0 + (self.render_width-min_size)/2
                     y0 = 0 + (self.render_height-min_size)/2
-                    cropped = extract_square_patch(org_img, [x0, y0, min_size, min_size], pad_factor=1)
+                    cropped = extract_square_patch(org_img, [x0, y0, min_size, min_size], pad_factor=1, resize=(self.out_size,self.out_size))
                 else:
-                    cropped = extract_square_patch(org_img, [0, 0, self.render_size, self.render_size], pad_factor=1)
+                    cropped = extract_square_patch(org_img, [0, 0, self.render_width, self.render_height], pad_factor=1, resize=(self.out_size,self.out_size))
 
             if(self.realistic_occlusions):
                 # Apply random renders behind

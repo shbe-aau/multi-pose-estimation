@@ -14,6 +14,7 @@ import gc
 import re
 
 from utils.utils import *
+from utils.tools import *
 from utils.onecyclelr import OneCycleLR
 
 from Model import Model
@@ -145,13 +146,20 @@ def main():
     except:
         model_path_loss = [args.get('Dataset', 'MODEL_PATH_LOSS')]
 
+    camera_params = calc_camera_parameters(render_width=args.getint('Rendering', 'RENDER_WIDTH',fallback=400),
+                                           render_height=args.getint('Rendering', 'RENDER_HEIGHT', fallback=400),
+                                           orig_width=args.getint('Rendering', 'ORIGINAL_WIDTH', fallback=720),
+                                           orig_height=args.getint('Rendering', 'ORIGINAL_HEIGHT', fallback=540),
+                                           fx=args.getfloat('Rendering', 'FOCAL_X', fallback=1075.65091572),
+                                           fy=args.getfloat('Rendering', 'FOCAL_Y', fallback=1073.90347929))
+
     # Set up batch renderer
     br = BatchRender(model_path_loss,
                      device,
+                     camera_params,
                      batch_size=args.getint('Training', 'BATCH_SIZE'),
                      faces_per_pixel=args.getint('Rendering', 'FACES_PER_PIXEL'),
                      render_method=args.get('Rendering', 'SHADER'),
-                     image_size=args.getint('Rendering', 'IMAGE_SIZE'),
                      norm_verts=args.getboolean('Rendering', 'NORMALIZE_VERTICES'))
 
     # Set size of model output depending on pose representation - deprecated?
@@ -237,6 +245,7 @@ def main():
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
                                      device,
+                                     camera_params,
                                      sampling_method = args.get('Training', 'VIEW_SAMPLING'),
                                      max_rel_offset = args.getfloat('Training', 'MAX_REL_OFFSET', fallback=0.2),
                                      augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
