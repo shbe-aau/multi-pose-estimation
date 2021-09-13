@@ -4,6 +4,10 @@
 
 Pending...
 
+<p align="center">
+<img src='docs/overview.svg' width='800'>
+<p>
+
 ## Setup
 
 Install docker and some requirements to make the image build properly.
