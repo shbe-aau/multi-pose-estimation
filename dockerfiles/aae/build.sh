@@ -1,1 +1,1 @@
-docker build -t aae-sundermeyer .
+docker build -t aae_sundermeyer .

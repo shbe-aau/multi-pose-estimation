@@ -1,1 +1,1 @@
-docker build -t pytorch3d_multiview_pose .
+docker build -t pytorch3d_multi_pose .
