@@ -29,6 +29,8 @@ Pending...
 
 Tested working on Ubuntu 16.04 LTS with Docker 18.09.7 and NVIDIA docker 2.3.0, and on Ubuntu 16.04 LTS with Docker 19.03.4 and NVIDIA docker 2.3.0.
 
+Already built images can be found at: pending
+
 ## Prepare models and data
 
 1) Download background images. We use the VOC2012 devkit for background images, they can be found at http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#devkit Store them in the repo under `multi-pose/data/VOC2012/JPEGImages`.
