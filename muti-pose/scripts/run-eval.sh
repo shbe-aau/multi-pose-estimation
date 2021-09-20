@@ -1,7 +1,7 @@
 # Arguments
 OBJ_ID=$1 #e.g 10
 APPROACH_NAME=$2 #e.g "sundermeyer"
-TRAINED_MODEL=$3 #e.g "pytorch3d/output/pose/obj19-10-poses-aug-bg-dataset/models/model-epoch20.pt"
+TRAINED_MODEL=$3 #e.g "multi-pose/output/pose/obj19-10-poses-aug-bg-dataset/models/model-epoch20.pt"
 DATA_SPLIT=$4 #e.g. "train"
 DATASET=$5 #e.g. "tless" or "lm"
 
@@ -15,9 +15,9 @@ fi
 SHARED_FOLDER=$(realpath ~/share-to-docker)
 
 # Docker commands
-GENERAL_DOCKER="docker run --rm --runtime=nvidia --user=$( id -u $USER ):$( id -g $USER ) --volume=/etc/group:/etc/group:ro --volume=/etc/passwd:/etc/passwd:ro --volume=/etc/shadow:/etc/shadow:ro --volume=/etc/sudoers.d:/etc/sudoers.d:ro -v ${SHARED_FOLDER}:/shared-folder -w /shared-folder/AugmentedAutoencoder -e DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
-MERGED_DOCKER="${GENERAL_DOCKER} --env PYTHONPATH=/shared-folder/AugmentedAutoencoder/bop_toolkit:$PYTHONPATH aae-pytorch3d"
-AAE_DOCKER="${GENERAL_DOCKER} tensorflow-opencv-opengl"
+GENERAL_DOCKER="docker run --rm --runtime=nvidia --user=$( id -u $USER ):$( id -g $USER ) --volume=/etc/group:/etc/group:ro --volume=/etc/passwd:/etc/passwd:ro --volume=/etc/shadow:/etc/shadow:ro --volume=/etc/sudoers.d:/etc/sudoers.d:ro -v ${SHARED_FOLDER}:/shared-folder -w /shared-folder/multi-pose-estimation -e DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
+PYTORCH_DOCKER="${GENERAL_DOCKER} --env PYTHONPATH=/shared-folder/multi-pose-estimation/bop_toolkit:$PYTHONPATH pytorch3d_multi_pose"
+AAE_DOCKER="${GENERAL_DOCKER} aae_sundermeyer"
 
 echo "----------------------------------------------------------"
 echo $(date +%T) "Object" ${OBJ_ID} "- dataset:" ${DATASET}"-"${DATA_SPLIT} "(hint: use tail -f log.out to see progress)"
@@ -27,14 +27,14 @@ if test -f "$BOP_PICKLE_PATH"; then
     echo $(date +%T) " - BOP dataset in pickle format already exists, skipping..."
 else
     if test "$DATA_SPLIT" = "test"; then
-	${MERGED_DOCKER} python pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} --dataset ${DATASET} > log.out
+	${PYTORCH_DOCKER} python multi-pose/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} --dataset ${DATASET} > log.out
     else
-	${MERGED_DOCKER} python pytorch3d/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} --dataset ${DATASET} > log.out
+	${PYTORCH_DOCKER} python multi-pose/utils/bop2pickle.py --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --obj_ids ${OBJ_ID} --dataset_split ${DATA_SPLIT} --dataset ${DATASET} > log.out
     fi
     wait
     echo $(date +%T) "Move pickle to BOP dataset folder"
     mkdir -p ${SHARED_FOLDER}/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}
-    mv ${SHARED_FOLDER}/AugmentedAutoencoder/${DATA_SPLIT}-obj${OBJ_ID}.p ${BOP_PICKLE_PATH}
+    mv ${SHARED_FOLDER}/multi-pose-estimation/${DATA_SPLIT}-obj${OBJ_ID}.p ${BOP_PICKLE_PATH}
     wait
 fi
 
@@ -53,7 +53,7 @@ if test "$APPROACH_NAME" = "sundermeyer"; then
 	if test -f "$SM_CSV_PATH"; then
 	    echo $(date +%T) " - CSV with results from Sundermeyers approach already exists, skipping..."
 	else
-	    ${MERGED_DOCKER} python pytorch3d/eval-pickle.py -pi /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-result-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/sundermeyer-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}${SUB_DATASET}.csv > log.out # -op pytorch3d/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
+	    ${PYTORCH_DOCKER} python multi-pose/eval-pickle.py -pi /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-result-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/sundermeyer-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}${SUB_DATASET}.csv > log.out # -op multi-pose/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	    wait
 	fi
     fi
@@ -62,8 +62,8 @@ else
     if test -f "$OUR_CSV_PATH"; then
 	echo $(date +%T) " - CSV with results already exists, skipping..."
     else
-	ENCODER_WEIGHTS="pytorch3d/data/obj1-18/encoder.npy"
-	${MERGED_DOCKER} python pytorch3d/eval-pickle.py -pi /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${DATASET}-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}${SUB_DATASET}.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op pytorch3d/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
+	ENCODER_WEIGHTS="multi-pose/data/obj1-18/encoder.npy"
+	${PYTORCH_DOCKER} python multi-pose/eval-pickle.py -pi /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${DATASET}-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/pickles/${DATA_SPLIT}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}${SUB_DATASET}.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op multi-pose/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	wait
     fi
 
@@ -81,8 +81,8 @@ else
     #else
 	#TARGETS_FILE="/shared-folder/bop/bop-${DATASET}-dataset/${DATASET}/targets/test_targets_bop19.json"
     #fi
-    ${MERGED_DOCKER} python bop_toolkit/scripts/eval_bop19.py --result_filenames=${RESULT_CSV} --targets_filename=${TARGETS_FILE} --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --eval_path ${BOP_EVAL_PATH} > log.out
+    ${PYTORCH_DOCKER} python bop_toolkit/scripts/eval_bop19.py --result_filenames=${RESULT_CSV} --targets_filename=${TARGETS_FILE} --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --eval_path ${BOP_EVAL_PATH} > log.out
 fi
 
 echo $(date +%T) "Plot BOP performance"
-${MERGED_DOCKER} python bop_toolkit/scripts/show_performance_bop19.py --result_filenames=${RESULT_CSV} --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --eval_path ${BOP_EVAL_PATH} > log.out
+${PYTORCH_DOCKER} python bop_toolkit/scripts/show_performance_bop19.py --result_filenames=${RESULT_CSV} --datasets_path /shared-folder/bop/bop-${DATASET}-dataset/ --eval_path ${BOP_EVAL_PATH} > log.out
