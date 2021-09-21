@@ -58,13 +58,38 @@ Already built images can be found at: pending
    cd shared-folder/multi-pose-estimation/multi-pose
    python train.py experiment_template.cfg
    ```
-   Parameters for the training are set in the .cfg file.
+   Parameters for the training are set in the .cfg file found in 'multi-pose/experiments' folder. You can create new configurations files for each training session.
+
+   The output of the training is saved at the path specified by the 'OUTPUT_PATH' parameter in the .cfg file. The default is './output/test' for 'experiment_template.cfg'. (__NOTE:__ Remember to specify different output paths for different sessions of training or you may overwrite previous training sessions!)
 
 
 ### Evaluating
 
-1) Bla
+1) Download the T-LESS __'BOP'19/20 test images'__ and __'Object models'__ from https://bop.felk.cvut.cz/datasets/
 
+2) Extract the downloaded files to '~/share-to-docker/tless/' such that this directory have the four sub-directories: 'models_cad', 'models_eval', 'models_reconst' and 'test_primesense'
+
+3) Run the evaluation script:
+   ```
+   bash ~/share-to-docker/multi-pose-estimation/multi-pose/scripts/run-eval.sh \
+   OBJ_ID \
+   APPROACH_NAME \
+   TRAINED_MODEL \
+   DATA_SPLIT \
+   DATASET
+   ```
+   Example - evaluating the first epoch from the 'experiment_template.cfg' run:
+   ```
+   bash ~/share-to-docker/multi-pose-estimation/multi-pose/scripts/run-eval.sh \
+   10 \
+   "experiment-template-epoch0" \
+   "multi-pose/output/test/models/model-epoch0.pt" \
+   "test" \
+   "tless"
+   ```
+   __NOTE:__ Do not use '_' for the APPROACH_NAME as it messes with evaluation scripts.
+
+4) The output of the evaluation can be found in '~/share-to-docker/tless/test-primesense/OBJ_ID/eval'.
 
 ## Visualize loss landscape
 
