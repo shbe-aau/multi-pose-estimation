@@ -67,7 +67,7 @@ A pre built image can be found at: https://hub.docker.com/r/shbe/pytorch3d_multi
 
 2) Run the evaluation script:
    ```
-   bash ~/share-to-docker/multi-pose-estimation/multi-pose/scripts/run-eval.sh \
+   bash multi-pose/scripts/run-eval.sh \
    OBJ_ID \
    APPROACH_NAME \
    TRAINED_MODEL \
@@ -76,7 +76,7 @@ A pre built image can be found at: https://hub.docker.com/r/shbe/pytorch3d_multi
    ```
    __Example__ - evaluating the first epoch from the 'experiment_template.cfg' run:
    ```
-   bash ~/share-to-docker/multi-pose-estimation/multi-pose/scripts/run-eval.sh \
+   bash multi-pose/scripts/run-eval.sh \
    10 \
    "experiment-template-epoch0" \
    "multi-pose/output/test/models/model-epoch0.pt" \
@@ -85,7 +85,7 @@ A pre built image can be found at: https://hub.docker.com/r/shbe/pytorch3d_multi
    ```
    __NOTE:__ Do not use '_' for the APPROACH_NAME as it messes with the evaluation scripts.
 
-4) The output of the evaluation can be found in `multi-pose/data/tless/test-primesense/OBJ_ID/eval/`
+4) The output of the evaluation can be found in `multi-pose/data/tless/output/test-primesense/OBJ_ID/eval/`
 
 ## Visualize loss landscape
 
