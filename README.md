@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pending...
+We propose a novel multi-pose loss function to train a neural network for 6D pose estimation, using synthetic data and evaluating it on real images. Our loss is inspired by the VSD (Visible Surface Discrepancy) metric and relies on a differentiable renderer and CAD models. This novel multi-pose approach produces multiple weighted pose estimates to avoid getting stuck in local minima. Our method resolves pose ambiguities without using predefined symmetries. It is trained only on synthetic data. We test on real-world RGB images from the T-LESS dataset, containing highly symmetric objects common in industrial settings.
 
 <p align="center">
 <img src='docs/overview.svg' width='800'>
@@ -24,12 +24,12 @@ Pending...
    ```
 
 
-   - Run `bash build.sh` in `dockerfiles/pytorch3d` to build the Docker images.
+   - Run `bash build.sh` in `dockerfiles/pytorch3d` to build the Docker image.
    - (Optional) Run `bash build.sh` in `dockerfiles/aae` to build the Docker image for running the AAE (Augmented Autoencoder) - this is only needed for evaluation of the AAE approach.
 
 Tested working on Ubuntu 16.04 LTS with Docker 18.09.7 and NVIDIA docker 2.3.0, and on Ubuntu 16.04 LTS with Docker 19.03.4 and NVIDIA docker 2.3.0.
 
-Already built images can be found at: pending
+A pre built image can be found at: https://hub.docker.com/r/shbe/pytorch3d_multi_pose
 
 ## Prepare models and data
 
@@ -85,7 +85,7 @@ Already built images can be found at: pending
    ```
    __NOTE:__ Do not use '_' for the APPROACH_NAME as it messes with the evaluation scripts.
 
-4) The output of the evaluation can be found in 'multi-pose/data/tless/test-primesense/OBJ_ID/eval'.
+4) The output of the evaluation can be found in `multi-pose/data/tless/test-primesense/OBJ_ID/eval/`
 
 ## Visualize loss landscape
 
