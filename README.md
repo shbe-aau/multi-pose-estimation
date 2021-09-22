@@ -20,12 +20,12 @@ Pending...
 
   - Clone this repo:
    ```
-   git clone git@github.com:shbe-aau/multi-pose-estimation.git ~/share-to-docker/multi-pose-estimation
+   git clone git@github.com:shbe-aau/multi-pose-estimation.git
    ```
 
 
-   - Run `bash build.sh` in `multi-pose-esitmation/dockerfile/pytorch3d` to build the Docker images.
-   - (Optional) Run `bash build.sh` in `multi-pose-esitmation/dockerfile/aae` to build the Docker image for running the AAE (Augmented Autoencoder) - this is only needed for evaluation of the AAE approach.
+   - Run `bash build.sh` in `dockerfiles/pytorch3d` to build the Docker images.
+   - (Optional) Run `bash build.sh` in `dockerfiles/aae` to build the Docker image for running the AAE (Augmented Autoencoder) - this is only needed for evaluation of the AAE approach.
 
 Tested working on Ubuntu 16.04 LTS with Docker 18.09.7 and NVIDIA docker 2.3.0, and on Ubuntu 16.04 LTS with Docker 19.03.4 and NVIDIA docker 2.3.0.
 
@@ -33,7 +33,7 @@ Already built images can be found at: pending
 
 ## Prepare models and data
 
-1) Download background images. We use the VOC2012 devkit for background images, they can be found at http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#devkit Store them in the repo under `multi-pose/data/VOC2012/JPEGImages`.
+1) Download background images by executing the script 'download-voc2012.sh' in 'multi-pose/data/VOC2012'. We use the VOC2012 devkit for background images, they can also be found at http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#devkit
 
 2) (Optional) Use the default for the T-LESS dataset already provided in `multi-pose/data/cad-files` or place your own CAD files in this folder.
 
@@ -54,8 +54,8 @@ Already built images can be found at: pending
 
 2) Spin up the Docker container and start training:
    ```
-   bash ~/share-to-docker/multi-pose-estimation/dockerfiles/pytorch3d/run-gpu0.sh
-   cd shared-folder/multi-pose-estimation/multi-pose
+   bash dockerfiles/pytorch3d/run-gpu0.sh
+   cd shared-folder/multi-pose
    python train.py experiment_template.cfg
    ```
    Parameters for the training are set in the .cfg file found in 'multi-pose/experiments' folder. You can create new configurations files for each training session.
@@ -65,11 +65,9 @@ Already built images can be found at: pending
 
 ### Evaluating
 
-1) Download the T-LESS __'BOP'19/20 test images'__ and __'Object models'__ from https://bop.felk.cvut.cz/datasets/
+1) Download the T-LESS __'BOP'19/20 test images'__ and __'Object models'__ from https://bop.felk.cvut.cz/datasets/ by running: 'bash download-tless.sh' in 'multi-pose/data/tless/'
 
-2) Extract the downloaded files to '~/share-to-docker/tless/' such that this directory have the four sub-directories: 'models_cad', 'models_eval', 'models_reconst' and 'test_primesense'
-
-3) Run the evaluation script:
+2) Run the evaluation script:
    ```
    bash ~/share-to-docker/multi-pose-estimation/multi-pose/scripts/run-eval.sh \
    OBJ_ID \
@@ -89,7 +87,7 @@ Already built images can be found at: pending
    ```
    __NOTE:__ Do not use '_' for the APPROACH_NAME as it messes with evaluation scripts.
 
-4) The output of the evaluation can be found in '~/share-to-docker/tless/test-primesense/OBJ_ID/eval'.
+4) The output of the evaluation can be found in 'multi-pose/data/tless/test-primesense/OBJ_ID/eval'.
 
 ## Visualize loss landscape
 

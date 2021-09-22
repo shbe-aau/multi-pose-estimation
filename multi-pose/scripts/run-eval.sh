@@ -1,3 +1,4 @@
+#!/bin/bash
 # Arguments
 OBJ_ID=$1 #e.g 10
 APPROACH_NAME=$2 #e.g "sundermeyer"
@@ -12,11 +13,12 @@ else
 fi
 
 # Parameters
-SHARED_FOLDER=$(realpath ~/share-to-docker)
+#SHARED_FOLDER=$(realpath ~/share-to-docker)
+SHARED_FOLDER=$(dirname $(readlink -f $0) | rev | cut -d'/' -f3- | rev)
 
 # Docker commands
-GENERAL_DOCKER="docker run --rm --runtime=nvidia --user=$( id -u $USER ):$( id -g $USER ) --volume=/etc/group:/etc/group:ro --volume=/etc/passwd:/etc/passwd:ro --volume=/etc/shadow:/etc/shadow:ro --volume=/etc/sudoers.d:/etc/sudoers.d:ro -v ${SHARED_FOLDER}:/shared-folder -w /shared-folder/multi-pose-estimation -e DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
-PYTORCH_DOCKER="${GENERAL_DOCKER} --env PYTHONPATH=/shared-folder/multi-pose-estimation/bop_toolkit:$PYTHONPATH pytorch3d_multi_pose"
+GENERAL_DOCKER="docker run --rm --runtime=nvidia --user=$( id -u $USER ):$( id -g $USER ) --volume=/etc/group:/etc/group:ro --volume=/etc/passwd:/etc/passwd:ro --volume=/etc/shadow:/etc/shadow:ro --volume=/etc/sudoers.d:/etc/sudoers.d:ro -v ${SHARED_FOLDER}:/shared-folder -w /shared-folder -e DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
+PYTORCH_DOCKER="${GENERAL_DOCKER} --env PYTHONPATH=/shared-folder/bop_toolkit:$PYTHONPATH pytorch3d_multi_pose"
 AAE_DOCKER="${GENERAL_DOCKER} aae_sundermeyer"
 
 echo "----------------------------------------------------------"
@@ -34,7 +36,7 @@ else
     wait
     echo $(date +%T) "Move pickle to BOP dataset folder"
     mkdir -p ${SHARED_FOLDER}/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}
-    mv ${SHARED_FOLDER}/multi-pose-estimation/${DATA_SPLIT}-obj${OBJ_ID}.p ${BOP_PICKLE_PATH}
+    mv ${SHARED_FOLDER}/${DATA_SPLIT}-obj${OBJ_ID}.p ${BOP_PICKLE_PATH}
     wait
 fi
 
@@ -76,7 +78,7 @@ LOCAL_BOP_EVAL_PATH=${SHARED_FOLDER}/${DATASET}/output/${DATA_SPLIT}-${SUB_DATAS
 if test -d "$LOCAL_BOP_EVAL_PATH"; then
     echo $(date +%T) " - eval dir from BOP already exists, skipping..."
 else
-    TARGETS_FILE="/shared-folder/multi-pose-estimation/multi-pose/data/tless-test-targets/${DATA_SPLIT}_targets_obj${OBJ_ID}.json"
+    TARGETS_FILE="/shared-folder/multi-pose/data/tless/test-targets/${DATA_SPLIT}_targets_obj${OBJ_ID}.json"
     ${PYTORCH_DOCKER} python bop_toolkit/scripts/eval_bop19.py --result_filenames=${RESULT_CSV} --targets_filename=${TARGETS_FILE} --datasets_path /shared-folder/ --eval_path ${BOP_EVAL_PATH} > log.out
 fi
 
