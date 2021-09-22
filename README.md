@@ -33,7 +33,7 @@ Already built images can be found at: pending
 
 ## Prepare models and data
 
-1) Download background images by executing the script 'download-voc2012.sh' in 'multi-pose/data/VOC2012'. We use the VOC2012 devkit for background images, they can also be found at http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#devkit
+1) Download background images by executing the script `download-voc2012.sh` in `multi-pose/data/VOC2012`. We use the VOC2012 devkit for background images, they can also be found at http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#devkit
 
 2) (Optional) Use the default for the T-LESS dataset already provided in `multi-pose/data/cad-files` or place your own CAD files in this folder.
 
@@ -50,9 +50,7 @@ Already built images can be found at: pending
 
 ## Train
 
-1) (Optional) Update the default path for the shared folder in `dockerfile/pytorch3d/run-gpu0.sh` - the shared folder should include the cloned repo. The default shared folder is `~/share-to-docker`. This step is only necessary if you did not clone the repo to the default location.
-
-2) Spin up the Docker container and start training:
+1) Spin up the Docker container and start training:
    ```
    bash dockerfiles/pytorch3d/run-gpu0.sh
    cd shared-folder/multi-pose
@@ -65,7 +63,7 @@ Already built images can be found at: pending
 
 ### Evaluating
 
-1) Download the T-LESS __'BOP'19/20 test images'__ and __'Object models'__ from https://bop.felk.cvut.cz/datasets/ by running: 'bash download-tless.sh' in 'multi-pose/data/tless/'
+1) Download the T-LESS __'BOP'19/20 test images'__ and __'Object models'__ from https://bop.felk.cvut.cz/datasets/ by running the script: `download-tless.sh` in `multi-pose/data/tless/`
 
 2) Run the evaluation script:
    ```
@@ -76,7 +74,7 @@ Already built images can be found at: pending
    DATA_SPLIT \
    DATASET
    ```
-   Example - evaluating the first epoch from the 'experiment_template.cfg' run:
+   __Example__ - evaluating the first epoch from the 'experiment_template.cfg' run:
    ```
    bash ~/share-to-docker/multi-pose-estimation/multi-pose/scripts/run-eval.sh \
    10 \
@@ -85,7 +83,7 @@ Already built images can be found at: pending
    "test" \
    "tless"
    ```
-   __NOTE:__ Do not use '_' for the APPROACH_NAME as it messes with evaluation scripts.
+   __NOTE:__ Do not use '_' for the APPROACH_NAME as it messes with the evaluation scripts.
 
 4) The output of the evaluation can be found in 'multi-pose/data/tless/test-primesense/OBJ_ID/eval'.
 
