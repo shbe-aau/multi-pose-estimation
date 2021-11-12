@@ -778,7 +778,7 @@ class DatasetGenerator():
 
     def __next__(self):
         if(self.curr_samples < self.max_samples):
-            self.curr_samples += self.batch_size
+            self.curr_samples += self.batch_size # this overshoots if not aligned, TODO
             return self.generate_samples(self.batch_size)
         else:
             raise StopIteration
