@@ -8,6 +8,8 @@ import numpy as np
 import random
 import cv2 as cv
 from DatasetGeneratorOpenGL import DatasetGenerator
+from utils.utils import *
+from utils.tools import *
 
 def main():
     # Read configuration file
@@ -40,6 +42,13 @@ def main():
         model_path_data = [args.get('Dataset', 'MODEL_PATH_DATA')]
         translations = [np.array(json.loads(args.get('Rendering', 'T')))]
 
+    camera_params = calc_camera_parameters(render_width=args.getint('Rendering', 'RENDER_WIDTH',fallback=400),
+                                           render_height=args.getint('Rendering', 'RENDER_HEIGHT', fallback=400),
+                                           orig_width=args.getint('Rendering', 'ORIGINAL_WIDTH', fallback=720),
+                                           orig_height=args.getint('Rendering', 'ORIGINAL_HEIGHT', fallback=540),
+                                           fx=args.getfloat('Rendering', 'FOCAL_X', fallback=1075.65091572),
+                                           fy=args.getfloat('Rendering', 'FOCAL_Y', fallback=1073.90347929))
+
     bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
     datagen = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
                                      model_path_data,
@@ -47,10 +56,12 @@ def main():
                                      args.getint('Training', 'BATCH_SIZE'),
                                      "not_used",
                                      device,
+                                     camera_params,
                                      sampling_method = args.get('Training', 'VIEW_SAMPLING'),
                                      max_rel_offset = args.getfloat('Training', 'MAX_REL_OFFSET', fallback=0.2),
                                      augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
-                                     seed=args.getint('Training', 'RANDOM_SEED'))
+                                     seed=args.getint('Training', 'RANDOM_SEED'),
+                                     gen_scenes=True)
 
     output_path = args.get('Training', 'OUTPUT_PATH')
 
@@ -68,18 +79,25 @@ def main():
         for cls in classes:
             file.write("{}\n".format(cls))
 
+    width = camera_params['render_width']
+    height = camera_params['render_height']
 
     # make training data
-    datagen.max_samples = args.getint('Training', 'NUM_SAMPLES')
-    last_num = gen_data(datagen, "train.txt", data_dir)
+    datagen.max_samples = args.getint('YOLO', 'TRAIN_SAMPLES')
+    last_num = gen_data(datagen, "train.txt", data_dir, width, height)
 
     # make validation data
-    datagen.max_samples = args.getint('Training', 'NUM_SAMPLES')
-    gen_data(datagen, "valid.txt", data_dir, last_num)
+    datagen.max_samples = args.getint('YOLO', 'VAL_SAMPLES')
+    gen_data(datagen, "valid.txt", data_dir, width, height, last_num)
 
+def bb_reformat(bboxin, render_width, render_height):
+    tlx, tly, w, h = bboxin
 
+    cx = tlx + w/2
+    cy = tly + h/2
+    return [cx/render_width, cy/render_height, w/render_width, w/render_height]
 
-def gen_data(datagen, name, data_dir, last_num=0):
+def gen_data(datagen, name, data_dir, width, height, last_num=0):
     # Create directory
     #path = os.path.join(data_dir, name)
     #os.mkdir(path)
@@ -94,22 +112,26 @@ def gen_data(datagen, name, data_dir, last_num=0):
     path = os.path.join(data_dir, name)
     with open(path, "w") as imlistfile:
         ind = last_num
-        for curr_batch in datagen:
-            for i in range(len(curr_batch["images"])):
-                ind += 1
-                # save congregate image to images folder as *ind*.png or .jpg?
-                im_file = os.path.join(im_path, "{}.png".format(ind))
-                result=cv.imwrite(im_file, curr_batch["images"][i]*255)
-                if result==False:
-                    print("Error in saving image {}".format(ind))
+        for scene_image, obj_dict in datagen:
+            ind += 1
+            # save congregate image to images folder as *ind*.png or .jpg?
+            im_file = os.path.join(im_path, "{}.png".format(ind))
+            result=cv.imwrite(im_file, scene_image*255)
+            if result==False:
+                print("Error in saving image {}".format(ind))
 
-                # save bbox of each object in image as:
-                # label_idx x_center y_center width height
-                # label_idx = (objectnum-1 as it is 0 indexed in classes.names)
-                # [0, 1] scaled coordinates
+            # save bbox of each object in image as:
+            # label_idx x_center y_center width height
+            # label_idx = (objectnum-1 as it is 0 indexed in classes.names)
+            # [0, 1] scaled coordinates
+            label_path_txt = os.path.join(label_path, "{}.txt".format(ind))
+            with open(label_path_txt, "w") as label_file:
+                for object in obj_dict:
+                    cx, cy, w, h = bb_reformat(object["bbox"], width, height)
+                    label_file.write("{} {} {} {} {}\n".format(object["obj_id"], cx, cy, w, h))
 
-                # write image name as row in imlistfile to put in correct subset
-                imlistfile.write("{}\n".format(im_file))
+            # write image name as row in imlistfile to put in correct subset
+            imlistfile.write("{}\n".format(im_file))
 
         return ind
 
