@@ -50,7 +50,7 @@ class DatasetGenerator():
 
     def __init__(self, background_path, obj_paths, obj_distance, batch_size,
                  _, device, camera_params, sampling_method="sphere", max_rel_offset=0.0, augment_imgs=True,
-                 random_light=True, num_bgs=5000, seed=None):
+                 random_light=True, num_bgs=5000, seed=None, gen_scenes=False):
 
         self.random_light = random_light
         self.realistic_occlusions = False
@@ -65,6 +65,7 @@ class DatasetGenerator():
         self.out_size = 128
         self.max_rel_offset = max_rel_offset
         self.max_rel_scale = None
+        self.gen_scenes = gen_scenes
 
         self.K = np.array([camera_params['fx'], 0, camera_params['px'],
                            0, camera_params['fy'], camera_params['py'],
@@ -75,8 +76,12 @@ class DatasetGenerator():
         self.augment = augment_imgs
         self.aug = self.setup_augmentation()
 
-        self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
-                                               self.out_size, self.out_size)
+        if gen_scenes:
+            self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
+                                                    self.render_height, self.render_width)
+        else:
+            self.backgrounds = self.load_bg_images("backgrounds", background_path, num_bgs,
+                                                    self.out_size, self.out_size)
 
         # Stuff for viewsphere aug sampling
         self.view_sphere = None
@@ -719,6 +724,224 @@ class DatasetGenerator():
                 "Ts":curr_ts}
         return data
 
+    def gen_rot_trans_params(self, tin=np.array([0, 0, 790.53840201]), randomizeT=True):
+        R_opengl, R_pytorch = self.pose_sampling()
+
+        t = np.copy(tin)
+        uniform = True
+
+        # change t by gaussian noise scaled to a std of 2% of z scale for x,y
+        if randomizeT:
+            if uniform:
+                std = t[2]*0.12
+                t[0] += np.random.uniform(-std, std)
+                t[1] += np.random.uniform(-std, std)
+                t[2] += np.random.uniform(-std*4, std*4)
+            else:
+                std = t[2]*0.02
+                t[0] += np.random.normal(0, std)
+                t[1] += np.random.normal(0, std)
+                t[2] += np.random.normal(0, std*10)
+
+        t_opengl = torch.tensor(t)
+        # flip for pytorch
+        t_pytorch = t * [-1, -1, 1]
+
+        return {"R_opengl": R_opengl,
+                "R_pytorch": R_pytorch,
+                "t_opengl": t_opengl,
+                "t_pytorch": t_pytorch}
+
+    def get_obj_id(self): # TODO this does not reprecent real object ids!
+        obj_id = 0
+        if(len(self.renderers) > 1):
+            obj_id = np.random.randint(0, len(self.renderers))
+        else:
+            obj_id = 0
+        return obj_id
+
+    def too_close(self, t, otherTs):
+        if not otherTs:
+            return False
+        zmarg = 0.05
+        xymarg = 0.05
+        for t2 in otherTs:
+            if t[2] < t2[2]*(1+zmarg) and t[2] > t2[2]*(1-zmarg):
+                return True
+        for t2 in otherTs:
+            if (t[0] < t2[0]*(1+xymarg) and t[0] > t2[0]*(1-xymarg)
+                and t[1] < t2[1]*(1+xymarg) and t[1] > t2[1]*(1-xymarg)):
+                return True
+        return False
+
+    def merge_by_depth(self, obj_dict_list):
+        # sort list by depth
+        obj_dict_list = sorted(obj_dict_list, key=lambda d: d['t_opengl'][2], reverse=True)
+
+        image = np.zeros_like(obj_dict_list[0]["org_img"])
+
+        for obj_dict in obj_dict_list:
+            image = self.front_on_base_img(obj_dict["org_img"], image)
+            del obj_dict["org_img"] # remove base image to save space
+
+        return obj_dict_list, image
+
+    def generate_scene(self, augment=True):
+        objects = []
+        ts_pytorch = []
+
+        # select a random number of object to include in the scene, same can occur multiple times
+        num_obj = np.random.randint(1, 6)
+
+        debug_counter = 0
+        # setup basic parameters and make sure object do not overlap too much
+        for k in range(num_obj):
+            # select object ids
+            obj_id = self.get_obj_id()
+
+            while True:
+                debug_counter += 1
+                if debug_counter > 100:
+                    print("Making scene with {} obejcts, has tried overlap {} times".format(num_obj, debug_counter))
+                # setup rotation and translaton matrices
+                obj_dict = self.gen_rot_trans_params()
+                if not self.too_close(obj_dict["t_pytorch"], ts_pytorch):
+                    ts_pytorch.append(obj_dict["t_pytorch"])
+                    obj_dict["obj_id"] = obj_id
+                    objects.append(obj_dict)
+                    break
+
+        # Randomize light position for rendering if enabled, should be shared in scenes
+        if(self.random_light is True):
+            #random_light_pos = (np.random.uniform(-1.0, 1.0, size=3)*self.dist[obj_id][-1]).astype(np.float32)
+            light_pos = (np.random.uniform(-1.0, 1.0, size=3)*1000).astype(np.float32)
+        else:
+            light_pos = None
+
+        # render one image for each object, needed for bbox
+        for i, obj_dict in enumerate(objects):
+            obj_dict = self.render_one_obj(obj_dict, light_pos)
+
+            objects[i] = obj_dict
+
+        # remove nonexistant objects
+        objects = list(filter(None, objects))
+
+        if len(objects) == 0:
+            print("No object got added to scene sucessfully")
+            return None, None
+
+        # merge images
+        objects, merged_img = self.merge_by_depth(objects)
+
+        augmented_img = self.augment_image(merged_img, augment)
+
+        return augmented_img, objects
+
+    def render_one_obj(self, obj_dict, light_pos):
+        # Render images
+        obj_id = obj_dict["obj_id"]
+        org_img = self.renderers[obj_id].render(obj_dict["R_opengl"], obj_dict["t_opengl"], light_pos)
+        obj_dict["org_img"] = org_img
+
+        # Calc bounding box
+        ys, xs = np.nonzero(org_img[:,:,0] > 0)
+        if xs.size == 0 or ys.size == 0:
+            return None # if no object found, return None entry
+        obj_bb = calc_2d_bbox(xs,ys,[self.render_width,self.render_height])
+        obj_dict["bbox"] = obj_bb
+
+        return obj_dict
+
+    def crop_from_bbox(self, obj_dict):
+        org_img = obj_dict["org_img"]
+
+        # Add relative offset when cropping - like Sundermeyer
+        x, y, w, h = obj_dict["obj_bb"]
+        if self.max_rel_offset != 0:
+            rand_trans_x = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * w
+            rand_trans_y = np.random.uniform(-self.max_rel_offset, self.max_rel_offset) * h
+        else:
+            rand_trans_x = 0
+            rand_trans_y = 0
+
+        obj_bb_off = obj_bb + np.array([rand_trans_x,rand_trans_y,0,0])
+        pad_factor =  1.2
+        if(False and self.max_rel_scale is not None):
+            scale = np.random.uniform(-self.max_rel_scale, self.max_rel_scale)
+            pad_factor = pad_factor + scale
+
+            cropped = extract_square_patch(org_img, obj_bb_off, pad_factor=pad_factor, resize=(self.out_size,self.out_size))
+        else:
+            centercrop = True
+            if centercrop:
+                min_size = min(self.render_width, self.render_height)
+                x0 = 0 + (self.render_width-min_size)/2
+                y0 = 0 + (self.render_height-min_size)/2
+                cropped = extract_square_patch(org_img, [x0, y0, min_size, min_size], pad_factor=1, resize=(self.out_size,self.out_size))
+            else:
+                cropped = extract_square_patch(org_img, [0, 0, self.render_width, self.render_height], pad_factor=1, resize=(self.out_size,self.out_size))
+
+        obj_dict["cropped_img"] = cropped
+        return obj_dict
+
+    # assumes cont and base have same dimentions
+    def front_on_base_img(self, front, base):
+        src_gray = cv.cvtColor(front, cv.COLOR_RGB2GRAY)
+        # TODO probably needs to turn image to grayscale first for contour
+        contours, _ = cv.findContours(src_gray, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) # Your call to find the contours
+        idx = 0 # The index of the contour that surrounds your object
+        mask = np.zeros_like(front) # Create mask where white is what we want, black otherwise
+        cv.drawContours(mask, contours, idx, (255,255,255), -1) # Draw filled contour in mask
+        base[mask == 255] = front[mask == 255]
+
+        return base
+
+
+    def augment_image(self, image, augment=True):
+
+        if(self.realistic_occlusions):
+            # Apply random renders behind
+            num_behind = np.random.randint(0,4)
+            for n in range(num_behind):
+                random_int = int(np.random.uniform(0, len(self.random_renders)-1))
+                behind = self.random_renders[random_int]
+                sum_img = np.sum(image[:,:,:3], axis=2)
+                mask = sum_img == 0
+                image[mask] = behind[mask]
+
+            # Apply random renders behind
+            num_front = np.random.randint(0,2)
+            for n in range(num_front):
+                random_int = int(np.random.uniform(0, len(self.random_renders)-1))
+                front = self.random_renders[random_int]
+                sum_img = np.sum(front[:,:,:3], axis=2)
+                mask = sum_img != 0
+                image[mask] = front[mask]
+
+        # Apply background
+        if(len(self.backgrounds) > 0):
+            bg_im_isd = np.random.choice(len(self.backgrounds), replace=False)
+            img_back = self.backgrounds[bg_im_isd]
+            img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
+            alpha = image[:, :, 0:3].astype(float)
+            sum_img = np.sum(image[:,:,:3], axis=2)
+            alpha[sum_img > 0] = 1
+
+            image[:, :, 0:3] = image[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
+        else:
+            image = image[:, :, 0:3]
+
+        # Augment data
+        image_aug = np.array([image])
+        if augment:
+            image_aug = self.aug(images=image_aug)
+
+        ## Convert to float and discard alpha channel
+        image_aug = image_aug[0].astype(np.float)/255.0
+
+        return image_aug
+
     def generate_images(self, num_samples):
         data = {"ids":[],
                 "images":[],
@@ -742,8 +965,15 @@ class DatasetGenerator():
 
     def __next__(self):
         if(self.curr_samples < self.max_samples):
-            self.curr_samples += self.batch_size # this overshoots if not aligned, TODO
-            return self.generate_samples(self.batch_size)
+            if self.gen_scenes:
+                self.curr_samples += 1
+                augmented_img, objects = self.generate_scene(augment=True)
+                while augmented_img is None:
+                    augmented_img, objects = self.generate_scene(augment=True)
+                return augmented_img, objects
+            else:
+                self.curr_samples += self.batch_size # this overshoots if not aligned, TODO
+                return self.generate_samples(self.batch_size)
         else:
             raise StopIteration
 
