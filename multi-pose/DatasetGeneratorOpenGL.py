@@ -228,6 +228,7 @@ class DatasetGenerator():
                 # bgr = cv2.resize(bgr, shape[:2])
                 bgr = bgr[y_anchor:y_anchor+shape[0],x_anchor:x_anchor+shape[1],:]
                 if bgr.shape[0]!=shape[0] or bgr.shape[1]!=shape[1]:
+                    print(" - failed to load bg image. Boundaries exceeds the image size!")
                     continue
                 if shape[2] == 1:
                     bgr = cv2.cvtColor(np.uint8(bgr), cv2.COLOR_BGR2GRAY)[:,:,np.newaxis]
