@@ -49,7 +49,8 @@ def main():
                                            fx=args.getfloat('Rendering', 'FOCAL_X', fallback=1075.65091572),
                                            fy=args.getfloat('Rendering', 'FOCAL_Y', fallback=1073.90347929))
 
-    bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
+    #bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
+    bg_path = "/home/hampus/vision/PyTorch-YOLOv3/data/coco/images/val2014"
     datagen = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
                                      model_path_data,
                                      translations,
@@ -62,8 +63,6 @@ def main():
                                      augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
                                      seed=args.getint('Training', 'RANDOM_SEED'),
                                      gen_scenes=True)
-
-    output_path = args.get('Training', 'OUTPUT_PATH')
 
     data_dir = args.get('Datagen', 'OUTPUT_PATH', fallback=os.path.join(os.getcwd(), "detection_data"))
 
