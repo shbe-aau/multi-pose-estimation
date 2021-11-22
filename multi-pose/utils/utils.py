@@ -12,6 +12,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from Model import Model
+from utils.onecyclelr import OneCycleLR
+
 from pytorch3d.renderer.utils import convert_to_tensors_and_broadcast
 
 def look_at_rotation_fixed(camera_position, at=((0, 0, 0),), up=((0, 1, 0),), device: str = "cpu") -> torch.Tensor:
@@ -490,3 +493,24 @@ def extract_square_patch(scene_img, bb_xywh, pad_factor=1.2,resize=(128,128),
 
         scene_crop = cv2.resize(scene_crop, resize, interpolation = interpolation)
         return scene_crop
+
+def loadCheckpoint(model_path):
+    # Load checkpoint and parameters
+    checkpoint = torch.load(model_path)
+    epoch = checkpoint['epoch'] + 1
+
+    # Load model
+    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
+    model = Model(num_views=num_views).cuda()
+
+    model.load_state_dict(checkpoint['model'])
+
+    # Load optimizer
+    optimizer = torch.optim.Adam(model.parameters())
+    optimizer.load_state_dict(checkpoint['optimizer'])
+
+    lr_reducer = OneCycleLR(optimizer)
+    lr_reducer.load_state_dict(checkpoint['lr_reducer'])
+
+    print("Loaded the checkpoint: \n" + model_path)
+    return model, optimizer, epoch, lr_reducer
