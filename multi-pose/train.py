@@ -54,27 +54,6 @@ def latestCheckpoint(model_dir):
         return checkpoints_sorted[-1]
     return None
 
-def loadCheckpoint(model_path):
-    # Load checkpoint and parameters
-    checkpoint = torch.load(model_path)
-    epoch = checkpoint['epoch'] + 1
-
-    # Load model
-    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-    model = Model(num_views=num_views).cuda()
-
-    model.load_state_dict(checkpoint['model'])
-
-    # Load optimizer
-    optimizer = torch.optim.Adam(model.parameters())
-    optimizer.load_state_dict(checkpoint['optimizer'])
-
-    lr_reducer = OneCycleLR(optimizer)
-    lr_reducer.load_state_dict(checkpoint['lr_reducer'])
-
-    print("Loaded the checkpoint: \n" + model_path)
-    return model, optimizer, epoch, lr_reducer
-
 def loadDataset(file_list, batch_size=2):
     #data = {"codes":[],"Rs":[],"images":[]}
     data = []
