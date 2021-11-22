@@ -926,7 +926,7 @@ class DatasetGenerator():
         if(len(self.backgrounds) > 0):
             bg_im_isd = np.random.choice(len(self.backgrounds), replace=False)
             img_back = self.backgrounds[bg_im_isd]
-            img_back = cv.cvtColor(img_back, cv.COLOR_BGR2RGBA).astype(float)
+            img_back = cv.cvtColor(img_back, cv.COLOR_RGB2RGBA).astype(float)
             alpha = image[:, :, 0:3].astype(float)
             sum_img = np.sum(image[:,:,:3], axis=2)
             alpha[sum_img > 0] = 1
