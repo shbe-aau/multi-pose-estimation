@@ -73,7 +73,7 @@ RUN pip3 --no-cache-dir install \
 # Install OpenCV
 RUN pip3 --no-cache-dir install \
     opencv-python==3.4.0.14 \
-    opencv-contrib-python
+    opencv-contrib-python==4.5.2.52
 
 # Install CUB
 RUN curl -LO https://github.com/NVIDIA/cub/archive/1.10.0.tar.gz
