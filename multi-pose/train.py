@@ -53,14 +53,14 @@ def latestCheckpoint(model_dir):
         return checkpoints_sorted[-1]
     return None
 
-def loadCheckpoint(model_path):
+def loadCheckpoint(model_path, num_objects=1):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path)
     epoch = checkpoint['epoch'] + 1
 
     # Load model
     num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-    model = Model(num_views=num_views).cuda()
+    model = Model(num_views=num_views, num_objects=num_objects).cuda()
 
     model.load_state_dict(checkpoint['model'])
 
@@ -170,7 +170,8 @@ def main():
 
     # Initialize a model using the renderer, mesh and reference image
     model = Model(num_views=len(views),
-                  weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""))
+                  weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""),
+                  num_objects=len(model_path_loss))
     model.to(device)
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
@@ -197,7 +198,7 @@ def main():
     # Load checkpoint for last epoch if it exists
     model_path = latestCheckpoint(os.path.join(output_path, "models/"))
     if(model_path is not None):
-        model, optimizer, epoch, lr_reducer = loadCheckpoint(model_path)
+        model, optimizer, epoch, lr_reducer = loadCheckpoint(model_path, num_objects=len(model_path_loss))
 
     if early_stopping:
         validation_csv=os.path.join(output_path, "validation-loss.csv")
@@ -270,7 +271,6 @@ def main():
         model = model.eval() # Set model to eval mode
         val_loss_list = []
         for curr_obj_id,v in enumerate(validation_data):
-            # specify obj id?
             val_loss = runEpoch(br, v, model, device, output_path, t=translations, config=args)
             val_loss_list.append(val_loss)
             append2file([val_loss], os.path.join(output_path,
@@ -345,7 +345,8 @@ def runEpoch(br, dataset, model,
                                                              ts,
                                                              ids=ids,
                                                              views=views,
-                                                             config=config)
+                                                             config=config,
+                                                             num_objects=pipeline.model.num_objects)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
 

@@ -19,7 +19,8 @@ def Loss(predicted_poses,
          ids=[],
          views=None,
          config=None,
-         fixed_gt_images=None):
+         fixed_gt_images=None,
+         num_objects=1):
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
     if config is None:
@@ -52,7 +53,7 @@ def Loss(predicted_poses,
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
         num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
-        pose_start = num_views
+        pose_start = 0 #num_views
         pose_end = pose_start + 6
 
         # Prepare gt images
@@ -61,16 +62,32 @@ def Loss(predicted_poses,
         gt_imgs = renderer.renderBatch(Rs_gt, ts, ids)
 
         losses = []
-        confs = predicted_poses[:,:num_views]
+        #confs = predicted_poses[:,:num_views]
+        confs = predicted_poses[:,:(num_views*num_objects)]
+        poses = predicted_poses[:,(num_views*num_objects):]
+
+        # Mask stuff according to ID if outputting multiple objects
+        print("bla", num_objects)
+        print(poses.shape)
+        if(num_objects > 1):
+            idx_mask = torch.tensor(ids)
+            confs = confs.reshape(-1,num_objects,num_views)
+            confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
+            
+            poses = poses.reshape(-1,num_objects,num_views*6)
+            poses = poses[torch.arange(poses.size(0)), idx_mask].squeeze(1)
+            print(poses.shape)
+            print("------------")
+        
         prev_poses = []
         pose_losses = []
         for i,v in enumerate(views):
             # Extract current pose and move to next one
             if fixed_gt_images is None:
-                curr_pose = predicted_poses[:,pose_start:pose_end]
+                curr_pose = poses[:,pose_start:pose_end]
                 Rs_predicted = pose_rep_func(curr_pose)
             else:
-                pose_matrix = predicted_poses[:,1:].reshape(1,3,3)
+                pose_matrix = poses[:,1:].reshape(1,3,3)
                 Rs_predicted = pose_matrix
             pose_start = pose_end
             pose_end = pose_start + 6
