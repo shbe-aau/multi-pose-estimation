@@ -642,7 +642,7 @@ class DatasetGenerator():
             if Rin is None:
                 R = self.pose_sampling()
                 if(len(self.renderers) > 1):
-                    obj_id = np.random.randint(0, len(self.renderers), size=1)[0]
+                    obj_id = np.random.randint(0, len(self.renderers)-1, size=1)[0]
                 else:
                     obj_id = 0
                 t = torch.tensor([0.0, 0.0, self.dist[obj_id][-1]])
