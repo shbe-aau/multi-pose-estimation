@@ -67,8 +67,6 @@ def Loss(predicted_poses,
         poses = predicted_poses[:,(num_views*num_objects):]
 
         # Mask stuff according to ID if outputting multiple objects
-        print("bla", num_objects)
-        print(poses.shape)
         if(num_objects > 1):
             idx_mask = torch.tensor(ids)
             confs = confs.reshape(-1,num_objects,num_views)
@@ -76,8 +74,6 @@ def Loss(predicted_poses,
             
             poses = poses.reshape(-1,num_objects,num_views*6)
             poses = poses[torch.arange(poses.size(0)), idx_mask].squeeze(1)
-            print(poses.shape)
-            print("------------")
         
         prev_poses = []
         pose_losses = []
