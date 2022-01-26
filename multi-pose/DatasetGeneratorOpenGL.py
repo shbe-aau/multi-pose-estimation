@@ -654,7 +654,7 @@ class DatasetGenerator():
                 if(len(self.hard_samples) > 0):
                     rand = np.random.uniform(low=0.0, high=1.0, size=1)[0]
                     if(rand <= self.hard_sample_ratio):
-                        rani = np.random.uniform(low=0, high=len(self.hard_samples)-1, size=1)[0]
+                        rani = np.random.uniform(low=0, high=len(self.hard_samples), size=1)[0]
                         #random.shuffle(self.hard_samples)
                         R = self.hard_samples.pop(int(rani))
 

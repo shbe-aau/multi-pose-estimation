@@ -74,7 +74,7 @@ def loadCheckpoint(model_path):
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, lr_reducer
 
-def loadDataset(file_list, batch_size=2):
+def loadDataset(file_list, batch_size=2, obj_id=0):
     #data = {"codes":[],"Rs":[],"images":[]}
     data = []
     for f in file_list:
@@ -99,7 +99,7 @@ def loadDataset(file_list, batch_size=2):
                 curr_batch["images"].append(curr_image)
 
                 # Temp fix for loading pickle without ids
-                curr_batch["ids"].append(0)
+                curr_batch["ids"].append(obj_id)
 
                 if(len(curr_batch["Rs"]) >= batch_size):
                     data.append(curr_batch)
@@ -243,10 +243,19 @@ def main():
                                      seed=args.getint('Training', 'RANDOM_SEED'))
     training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
-    # Load the validationset
-    validation_data = loadDataset(json.loads(args.get('Dataset', 'VALID_DATA_PATH')),
-                                  args.getint('Training', 'BATCH_SIZE'))
-    print("Loaded validation set!")
+    # Load the validationsets
+    try:
+        valid_data_paths = json.loads(args.get('Dataset', 'VALID_DATA_PATH'))
+    except:
+        valid_data_paths = [args.get('Dataset', 'VALID_DATA_PATH')]
+
+
+    validation_data = []
+    for curr_obj_id,v in enumerate(valid_data_paths):
+        validation_data.append(loadDataset([v],
+                                           args.getint('Training', 'BATCH_SIZE'),
+                                           obj_id=curr_obj_id))
+    print("Loaded {0} validation sets!".format(len(validation_data)))
 
     # Start training
     while(epoch < args.getint('Training', 'NUM_ITER')):
@@ -259,8 +268,17 @@ def main():
 
         # Test on validation data
         model = model.eval() # Set model to eval mode
-        val_loss = runEpoch(br, validation_data, model, device, output_path,
-                          t=translations, config=args)
+        val_loss_list = []
+        for curr_obj_id,v in enumerate(validation_data):
+            # specify obj id?
+            val_loss = runEpoch(br, v, model, device, output_path, t=translations, config=args)
+            val_loss_list.append(val_loss)
+            append2file([val_loss], os.path.join(output_path,
+                                                 "validation-obj{0}-loss.csv".format(curr_obj_id)))
+            plotLoss(os.path.join(output_path, "train-loss.csv"),
+                     os.path.join(output_path, "validation-obj{0}-loss.png".format(curr_obj_id)),
+                     validation_csv=os.path.join(output_path,"validation-obj{0}-loss.csv".format(curr_obj_id)))
+        val_loss = np.mean(np.array(val_loss_list))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
         # Plot losses
@@ -305,7 +323,7 @@ def runEpoch(br, dataset, model,
     losses = []
     batch_size = br.batch_size
     hard_indeces = []
-
+    
     for i,curr_batch in enumerate(dataset):
         if(model.training):
             optimizer.zero_grad()
@@ -399,7 +417,7 @@ def runEpoch(br, dataset, model,
             if(model.training):
                 batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
             else:
-                batch_img_dir = os.path.join(output_path, "val-images/epoch{0}".format(epoch))
+                batch_img_dir = os.path.join(output_path, "val-images/epoch{0}/obj{1}".format(epoch,ids[0]))
             prepareDir(batch_img_dir)
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()
