@@ -39,14 +39,15 @@ def arr2str(arr):
         str_arr += "{0:.8f} ".format(flat_arr[i])
     return str_arr[:-1]
 
-def loadCheckpoint(model_path, device):
+def loadCheckpoint(model_path, device, num_views, num_objects):
     # Load checkpoint and parameters
     checkpoint = torch.load(model_path, map_location=device)
     epoch = checkpoint['epoch'] + 1
 
     # Load model
-    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-    model = Model(num_views=num_views).cuda()
+    #num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
+    #model = Model(num_views=num_views).cuda()
+    model = Model(num_views=num_views, num_objects=num_objects).cuda()
     model.load_state_dict(checkpoint['model'])
 
     # Load optimizer
@@ -78,8 +79,29 @@ def main():
     parser.add_argument("-ep", help="path to the encoder weights")
     parser.add_argument("-pi", help="path to the pickle input file")
     parser.add_argument("-op", help="path to the CAD model for the object", default=None)
+    parser.add_argument("-nw", help="number of views", default=10)
+    parser.add_argument("-no", help="number of objects", default=1)
     parser.add_argument("-o", help="output path", default="./output.csv")
     args = parser.parse_args()
+
+    num_views = 10 #int(args.nw)
+    num_objects = 5 #int(args.no)
+
+    # obj mapping - should be an argument
+    # key = real obj
+    # value = obj number in NN output
+    obj_mapping = {}
+    #obj_mapping[real_obj_id] = obj number in NN output
+    obj_mapping[1] = 0
+    obj_mapping[2] = 0
+    obj_mapping[5] = 1
+    obj_mapping[6] = 1
+    obj_mapping[10] = 2
+    obj_mapping[17] = 3
+    obj_mapping[18] = 3
+    obj_mapping[19] = 4
+    obj_mapping[20] = 4
+
 
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
@@ -95,7 +117,10 @@ def main():
         model = Model().to(device)
 
         # Load model checkpoint
-        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp, device)
+        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp,
+                                                                device,
+                                                                num_views=num_views,
+                                                                num_objects=num_objects)
         model.to(device)
         model.eval()
 
@@ -140,22 +165,51 @@ def main():
             predicted_poses = pipeline.process([img])
 
             # Find best pose
-            num_views = int(predicted_poses.shape[1]/(6+1))
-            pose_start = num_views
+            #num_views = int(predicted_poses.shape[1]/(6+1))
+            #pose_start = num_views
+            pose_start = 0
             pose_end = pose_start + 6
             best_pose = 0.0
             R_predicted = None
 
+
+            confs = predicted_poses[:,:(num_views*num_objects)]
+            poses = predicted_poses[:,(num_views*num_objects):]
+
+            # Mask stuff according to ID if outputting multiple objects
+            #print(poses.shape)
+            if(num_objects > 1):
+                # Obj ID map?
+                #ids = [data["obj_ids"][i]-1]
+
+                ids = [obj_mapping[data["obj_ids"][i]]]
+
+                #obj_mapping[real_obj_id] = obj number in NN output
+
+                idx_mask = torch.tensor(ids)
+                confs = confs.reshape(-1,num_objects,num_views)
+                confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
+
+                poses = poses.reshape(-1,num_objects,num_views*6)
+                poses = poses[torch.arange(poses.size(0)), idx_mask].squeeze(1)
+                #print(poses.shape)
+                #print("--------------")
+
+            #print("###############################")
+            #print("confs! ", confs)
+            #print("###############################")
+
             for k in range(num_views):
                 # Extract current pose and move to next one
-                curr_pose = predicted_poses[:,pose_start:pose_end]
-                print(curr_pose)
+                #curr_pose = predicted_poses[:,pose_start:pose_end]
+                curr_pose = poses[:,pose_start:pose_end]
                 Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
                 Rs_predicted = Rs_predicted.detach().cpu().numpy()[0]
                 pose_start = pose_end
                 pose_end = pose_start + 6
 
-                conf = predicted_poses[:,k].detach().cpu().numpy()[0]
+                #conf = predicted_poses[:,k].detach().cpu().numpy()[0]
+                conf = confs[:,k].detach().cpu().numpy()[0]
                 if(conf > best_pose):
                     R_predicted = Rs_predicted
                     best_pose = conf
