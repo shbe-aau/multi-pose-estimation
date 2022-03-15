@@ -68,8 +68,11 @@ def loadCheckpoint(model_path, num_objects=1):
     optimizer = torch.optim.Adam(model.parameters())
     optimizer.load_state_dict(checkpoint['optimizer'])
 
-    lr_reducer = OneCycleLR(optimizer)
-    lr_reducer.load_state_dict(checkpoint['lr_reducer'])
+    try:
+        lr_reducer = OneCycleLR(optimizer)
+        lr_reducer.load_state_dict(checkpoint['lr_reducer'])
+    except:
+        lr_reducer = None
 
     print("Loaded the checkpoint: \n" + model_path)
     return model, optimizer, epoch, lr_reducer
@@ -178,7 +181,10 @@ def main():
     low_lr = args.getfloat('Training', 'LEARNING_RATE_LOW')
     high_lr = args.getfloat('Training', 'LEARNING_RATE_HIGH')
     optimizer = torch.optim.Adam(model.parameters(), lr=low_lr)
-    lr_reducer = OneCycleLR(optimizer, num_steps=args.getfloat('Training', 'NUM_ITER'), lr_range=(low_lr, high_lr))
+    if(low_lr != high_lr):
+        lr_reducer = OneCycleLR(optimizer, num_steps=args.getfloat('Training', 'NUM_ITER'), lr_range=(low_lr, high_lr))
+    else:
+        lr_reducer = None
 
     # Prepare output directories
     output_path = args.get('Training', 'OUTPUT_PATH')
@@ -265,7 +271,10 @@ def main():
         loss = runEpoch(br, training_data, model, device, output_path,
                           t=translations, config=args)
         append2file([loss], os.path.join(output_path, "train-loss.csv"))
-        append2file([lr_reducer.get_lr()], os.path.join(output_path, "learning-rate.csv"))
+        if(lr_reducer is not None):
+            append2file([lr_reducer.get_lr()], os.path.join(output_path, "learning-rate.csv"))
+        else:
+            append2file([optimizer.param_groups[0]['lr']], os.path.join(output_path, "learning-rate.csv"))
 
         # Test on validation data
         model = model.eval() # Set model to eval mode
@@ -313,7 +322,10 @@ def runEpoch(br, dataset, model,
 
     if(model.training):
         print("Current mode: train!")
-        print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_lr()))
+        if(lr_reducer is not None):
+            print("Epoch: {0} - current learning rate: {1}".format(epoch, lr_reducer.get_lr()))
+        else:
+            print("Epoch: {0} - current learning rate: {1}".format(epoch, optimizer.param_groups[0]['lr']))
         dataset.hard_samples = [] # Reset hard samples
         torch.set_grad_enabled(True)
     else:
@@ -444,7 +456,8 @@ def runEpoch(br, dataset, model,
                  'lr_reducer': lr_reducer.state_dict(),
                  'epoch': epoch}
         torch.save(state, os.path.join(model_dir,"model-epoch{0}.pt".format(epoch)))
-        lr_reducer.step()
+        if(lr_reducer is not None):
+            lr_reducer.step()
 
     # Memory management
     dbg("After train memory: {}".format(torch.cuda.memory_summary(device=device, abbreviated=False)), dbg_memory)
