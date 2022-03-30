@@ -121,6 +121,7 @@ def main():
     args = configparser.ConfigParser()
     args.read(cfg_file_path)
 
+    # Set random seed
     seed=args.getint('Training', 'RANDOM_SEED')
     if(seed is not None):
         torch.manual_seed(seed)
@@ -217,7 +218,6 @@ def main():
             lr_reducer.load_state_dict(checkpoint['lr_reducer'])
         except:
             lr_reducer = None
-
         print("Loaded the checkpoint: \n" + model_path)
 
     if early_stopping:
@@ -271,6 +271,22 @@ def main():
 
     # Start training
     while(epoch < args.getint('Training', 'NUM_ITER')):
+        # Set random seed based on current epoch
+        seed=args.getint('Training', 'RANDOM_SEED')
+        if(seed is not None):
+            seed += epoch
+            torch.manual_seed(seed)
+            #torch.use_deterministic_algorithms(True) # Requires pytorch>=1.8.0
+            #torch.backends.cudnn.deterministic = True
+            np.random.seed(seed=seed)
+            ia.seed(seed)
+            random.seed(seed)
+
+        model_seed=args.getint('Training', 'MODEL_RANDOM_SEED', fallback=None)
+        if(model_seed is not None):
+            model_seed += epoch
+            torch.manual_seed(model_seed)
+
         # Train on synthetic data
         model = model.train() # Set model to train mode
         loss = runEpoch(br, training_data, model, device, output_path,
