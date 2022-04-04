@@ -137,6 +137,7 @@ def Loss(predicted_poses,
     if(loss_method=="vsd-union"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
+        inv_poses = config.getboolean('Training', 'INV_POSES_PREDICTION', fallback=False)
         num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         pose_start = num_views
@@ -156,6 +157,7 @@ def Loss(predicted_poses,
             if fixed_gt_images is None:
                 curr_pose = predicted_poses[:,pose_start:pose_end]
                 Rs_predicted = pose_rep_func(curr_pose)
+                Rs_predicted = torch.inverse(Rs_predicted)
             else:
                 pose_matrix = predicted_poses[:,1:].reshape(1,3,3)
                 Rs_predicted = pose_matrix
@@ -305,7 +307,6 @@ def Loss(predicted_poses,
         batch_loss = batch_loss.unsqueeze(-1)
         loss = torch.mean(batch_loss)
         return loss, batch_loss, gt_imgs, predicted_imgs
-
 
     print("Unknown loss specified")
     return -1, None, None, None

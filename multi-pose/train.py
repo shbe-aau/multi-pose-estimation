@@ -262,6 +262,7 @@ def main():
                                      max_rel_offset = args.getfloat('Training', 'MAX_REL_OFFSET', fallback=0.2),
                                      augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
                                      seed=args.getint('Training', 'RANDOM_SEED'))
+    training_data.inv_poses = args.getboolean('Training', 'INV_POSES_TRAINING', fallback=False)
     training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
     # Load the validationset
