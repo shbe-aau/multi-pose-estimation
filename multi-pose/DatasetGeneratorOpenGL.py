@@ -52,7 +52,6 @@ class DatasetGenerator():
                  _, device, sampling_method="sphere", max_rel_offset=0.2, augment_imgs=True,
                  random_light=True, num_bgs=5000, seed=None):
 
-        self.inv_poses = False
         self.random_light = random_light
         self.realistic_occlusions = False
         self.random_renders = []
@@ -642,9 +641,6 @@ class DatasetGenerator():
             obj_id = 0
             if Rin is None:
                 R = self.pose_sampling()
-
-                if(self.inv_poses):
-                    R = torch.inverse(R)
 
                 if(len(self.renderers) > 1):
                     obj_id = np.random.randint(0, len(self.renderers), size=1)[0]
