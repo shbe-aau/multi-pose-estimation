@@ -53,7 +53,7 @@ def latestCheckpoint(model_dir):
         return checkpoints_sorted[-1]
     return None
 
-def loadDataset(file_list, batch_size=2):
+def loadDataset(file_list, batch_size=2, obj_id=0):
     #data = {"codes":[],"Rs":[],"images":[]}
     data = []
     for f in file_list:
@@ -78,7 +78,7 @@ def loadDataset(file_list, batch_size=2):
                 curr_batch["images"].append(curr_image)
 
                 # Temp fix for loading pickle without ids
-                curr_batch["ids"].append(0)
+                curr_batch["ids"].append(obj_id)
 
                 if(len(curr_batch["Rs"]) >= batch_size):
                     data.append(curr_batch)
@@ -150,6 +150,7 @@ def main():
 
     # Initialize a model using the renderer, mesh and reference image
     model = Model(num_views=len(views),
+                  num_objects=len(model_path_loss),
                   finetune_encoder=args.getboolean('Training','FINETUNE_ENCODER', fallback=False),
                   weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""))
     model.to(device)
@@ -249,9 +250,18 @@ def main():
     training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
     # Load the validationset
-    validation_data = loadDataset(json.loads(args.get('Dataset', 'VALID_DATA_PATH')),
-                                  args.getint('Training', 'BATCH_SIZE'))
-    print("Loaded validation set!")
+    try:
+        valid_data_paths = json.loads(args.get('Dataset', 'VALID_DATA_PATH'))
+    except:
+        valid_data_paths = [args.get('Dataset', 'VALID_DATA_PATH')]
+
+
+    validation_data = []
+    for curr_obj_id,v in enumerate(valid_data_paths):
+        validation_data.append(loadDataset([v],
+                                           args.getint('Training', 'BATCH_SIZE'),
+                                           obj_id=curr_obj_id))
+    print("Loaded {0} validation sets!".format(len(validation_data)))
 
     # Start training
     while(epoch < args.getint('Training', 'NUM_ITER')):
@@ -283,8 +293,16 @@ def main():
 
         # Test on validation data
         model = model.eval() # Set model to eval mode
-        val_loss = runEpoch(br, validation_data, model, device, output_path,
-                          t=translations, config=args)
+        val_loss_list = []
+        for curr_obj_id,v in enumerate(validation_data):
+            val_loss = runEpoch(br, v, model, device, output_path, t=translations, config=args)
+            val_loss_list.append(val_loss)
+            append2file([val_loss], os.path.join(output_path,
+                                                 "validation-obj{0}-loss.csv".format(curr_obj_id)))
+            plotLoss(os.path.join(output_path, "train-loss.csv"),
+                     os.path.join(output_path, "validation-obj{0}-loss.png".format(curr_obj_id)),
+                     validation_csv=os.path.join(output_path,"validation-obj{0}-loss.csv".format(curr_obj_id)))
+        val_loss = np.mean(np.array(val_loss_list))
         append2file([val_loss], os.path.join(output_path, "validation-loss.csv"))
 
         # Plot losses
@@ -364,11 +382,11 @@ def runEpoch(br, dataset, model,
             loss.backward()
             optimizer.step()
 
-            # DEBUG! REMOVE
-            print("Encoder conv: ", torch.sum(pipeline.encoder.encoder_conv2d_Conv2D.weight))
-            print("Encoder FC (encoder): ", None if pipeline.encoder.encoder_dense_MatMul is None else torch.sum(pipeline.encoder.encoder_dense_MatMul.weight))
-            print("Encoder FC (model): ", None if pipeline.model.encoder is None else torch.sum(pipeline.model.encoder.weight))
-            print("Pose network: ", torch.sum(pipeline.model.l3.weight))
+            # # DEBUG! REMOVE
+            # print("Encoder conv: ", torch.sum(pipeline.encoder.encoder_conv2d_Conv2D.weight))
+            # print("Encoder FC (encoder): ", None if pipeline.encoder.encoder_dense_MatMul is None else torch.sum(pipeline.encoder.encoder_dense_MatMul.weight))
+            # print("Encoder FC (model): ", None if pipeline.model.encoder is None else torch.sum(pipeline.model.encoder.weight))
+            # print("Pose network: ", torch.sum(pipeline.model.l3.weight))
 
         #detach all from gpu
         loss.detach().cpu().numpy()
@@ -383,30 +401,10 @@ def runEpoch(br, dataset, model,
         losses = losses + batch_loss.data.detach().cpu().numpy().tolist()
 
         if(config.getboolean('Training', 'SAVE_IMAGES')):
-            # Visualize hard samples
-            if(model.training):
-                hard_img_dir = os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
-                prepareDir(hard_img_dir)
-
-                for h in hard_indeces[:1]:
-                    gt_img = (gt_images[h]).detach().cpu().numpy()
-                    predicted_img = (predicted_images[h]).detach().cpu().numpy()
-
-                    vmin = np.linalg.norm(T)*0.9
-                    vmax = max(np.max(gt_img), np.max(predicted_img))
-
-                    fig = plt.figure(figsize=(12,3+len(views)*2))
-                    plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
-                             predicted_poses, batch_loss, batch_size, threshold=config['Loss_parameters'].getfloat('DEPTH_MAX'), img_num=h)
-                    fig.tight_layout()
-
-                    fig.savefig(os.path.join(hard_img_dir, "epoch{0}-batch{1}-sample{2}.png".format(epoch,i,h)), dpi=fig.dpi)
-                    plt.close()
-
             if(model.training):
                 batch_img_dir = os.path.join(output_path, "images/epoch{0}".format(epoch))
             else:
-                batch_img_dir = os.path.join(output_path, "val-images/epoch{0}".format(epoch))
+                batch_img_dir = os.path.join(output_path, "val-images/epoch{0}/obj{1}".format(epoch,ids[0]))
             prepareDir(batch_img_dir)
             gt_img = (gt_images[0]).detach().cpu().numpy()
             predicted_img = (predicted_images[0]).detach().cpu().numpy()

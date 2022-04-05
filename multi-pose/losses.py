@@ -315,6 +315,104 @@ def Loss(predicted_poses,
         loss = torch.mean(batch_loss)
         return loss, batch_loss, gt_imgs, predicted_imgs
 
+    if(loss_method=="vsd-union-multi-object"):
+        depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
+        pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
+        num_views = len(views)
+        num_objects = len(renderer.obj_paths)
+        gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
+        pose_start = 0
+        pose_end = pose_start + 6
+
+        # Prepare gt images
+        gt_images = []
+        predicted_images = []
+        gt_imgs = renderer.renderBatch(Rs_gt, ts, ids)
+
+        # Split predicted poses into confidences and poses
+        confs = predicted_poses[:,:(num_views*num_objects)]
+        poses = predicted_poses[:,(num_views*num_objects):]
+
+        # Mask stuff according to ID if outputting multiple objects
+        if(num_objects > 1):
+            idx_mask = torch.tensor(ids)
+            confs = confs.reshape(-1,num_objects,num_views)
+            confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
+
+            poses = poses.reshape(-1,num_objects,num_views*6)
+            poses = poses[torch.arange(poses.size(0)), idx_mask].squeeze(1)
+
+        losses = []
+        prev_poses = []
+        pose_losses = []
+        for i,v in enumerate(views):
+            # Extract current pose and move to next one
+            if fixed_gt_images is None:
+                curr_pose = poses[:,pose_start:pose_end]
+                Rs_predicted = pose_rep_func(curr_pose)
+            else:
+                pose_matrix = poses[:,1:].reshape(1,3,3)
+                Rs_predicted = pose_matrix
+            pose_start = pose_end
+            pose_end = pose_start + 6
+
+            # Render predicted images
+            imgs = renderer.renderBatch(Rs_predicted, ts, ids)
+            predicted_images.append(imgs)
+            gt_images.append(gt_imgs)
+
+            # Visiblity mask
+            mask_gt = gt_imgs != -1
+            mask_pd = imgs != -1
+            mask_union = torch.zeros_like(gt_imgs)
+            mask_union[mask_gt] = 1.0
+            mask_union[mask_pd] = 1.0
+
+            # Calculate loss
+            diff = torch.abs(gt_imgs - imgs)
+            diff = torch.clamp(diff, 0.0, depth_max)/depth_max
+            batch_loss = torch.sum(diff*mask_union, dim=(1,2))/torch.sum(mask_union, dim=(1,2))
+
+            batch_loss = (batch_loss*confs[:,i] + gamma*batch_loss)/2.0
+            losses.append(batch_loss.unsqueeze(-1))
+
+            # Calculate pose loss
+            for k,p in enumerate(prev_poses):
+                R = torch.matmul(p, torch.transpose(Rs_predicted, 1, 2))
+                R_trace = torch.diagonal(R, dim1=-2, dim2=-1).sum(-1)
+                theta = (R_trace - 1.0)/2.0
+                epsilon=1e-5
+                theta = torch.acos(torch.clamp(theta, -1 + epsilon, 1 - epsilon))
+                degree = theta * (180.0/3.14159)
+
+                pose_diff = 1.0 - (torch.clamp(degree, 0.0, pose_max)/pose_max)
+
+                pose_batch_loss = pose_diff
+                pose_losses.append(pose_batch_loss.unsqueeze(-1))
+
+            # Add current predicted poses to list of previous ones
+            prev_poses.append(Rs_predicted)
+
+        # Concat different views
+        gt_imgs = torch.cat(gt_images, dim=1)
+        predicted_imgs = torch.cat(predicted_images, dim=1)
+        losses = torch.cat(losses, dim=1)
+        if(num_views == 1):
+            pose_losses = torch.zeros_like(losses)
+        else:
+            pose_losses = torch.cat(pose_losses, dim=1)
+        pose_losses = torch.mean(pose_losses, dim=1)
+        depth_losses = torch.sum(losses, dim=1)
+
+        dbg("depth loss {}".format(torch.mean(depth_losses)), dbg_losses)
+        dbg("pose loss  {}".format(torch.mean(pose_losses)), dbg_losses)
+
+        batch_loss = depth_losses + pose_losses
+        batch_loss = batch_loss.unsqueeze(-1)
+        loss = torch.mean(batch_loss)
+        return loss, batch_loss, gt_imgs, predicted_imgs
+
+
     if(loss_method=="vsd-gt-mask"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
