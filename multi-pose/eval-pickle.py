@@ -69,12 +69,31 @@ def main():
 
     # Load configuration file
     cfg_file_path = args.mp.replace("/models/{0}".format(args.mp.split('/')[-1]),"")
-    print(cfg_file_path)
     cfg_file_path = glob.glob('{0}/*.cfg'.format(cfg_file_path))[0]
     conf = configparser.ConfigParser()
     conf.read(cfg_file_path)
+
+    try:
+        model_path_loss = json.loads(conf.get('Dataset', 'MODEL_PATH_LOSS'))
+    except:
+        model_path_loss = [conf.get('Dataset', 'MODEL_PATH_LOSS')]
+
+    num_objects = len(model_path_loss)
     num_views = len(json.loads(conf.get('Rendering', 'VIEWS')))
     tune_encoder = conf.getboolean('Training','FINETUNE_ENCODER', fallback=False)
+
+    # Prepare object mapping for using GT obj IDs
+    obj_mapping = {}
+    #obj_mapping[real_obj_id] = obj number in NN output
+    obj_mapping[1] = 0
+    obj_mapping[2] = 0
+    obj_mapping[5] = 1
+    obj_mapping[6] = 1
+    obj_mapping[10] = 2
+    obj_mapping[17] = 3
+    obj_mapping[18] = 3
+    obj_mapping[19] = 4
+    obj_mapping[20] = 4
 
     # Run prepare our model if needed
     if("Rs_predicted" not in data):
@@ -85,6 +104,7 @@ def main():
 
         # Initialize the model
         model = Model(num_views=num_views,
+                      num_objects=num_objects,
                       finetune_encoder=tune_encoder)
         model.to(device)
 
@@ -92,7 +112,7 @@ def main():
         checkpoint = torch.load(args.mp)
 
         # Load model
-        model.load_state_dict(checkpoint['model'])
+        model.load_state_dict(checkpoint['model'], strict=False)
         model.eval()
 
         # Load and prepare encoder
@@ -138,22 +158,35 @@ def main():
             predicted_poses = pipeline.process([img])
 
             # Find best pose
-            num_views = int(predicted_poses.shape[1]/(6+1))
-            pose_start = num_views
+            pose_start = 0
             pose_end = pose_start + 6
             best_pose = 0.0
             R_predicted = None
 
+            # Seperate prdiction into confidences and poses
+            confs = predicted_poses[:,:(num_views*num_objects)]
+            poses = predicted_poses[:,(num_views*num_objects):]
+
+            # Mask stuff according to ID if outputting multiple objects
+            if(num_objects > 1):
+                ids = [obj_mapping[data["obj_ids"][i]]]
+
+                idx_mask = torch.tensor(ids)
+                confs = confs.reshape(-1,num_objects,num_views)
+                confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
+
+                poses = poses.reshape(-1,num_objects,num_views*6)
+                poses = poses[torch.arange(poses.size(0)), idx_mask].squeeze(1)
+
             for k in range(num_views):
                 # Extract current pose and move to next one
-                curr_pose = predicted_poses[:,pose_start:pose_end]
-                print(curr_pose)
+                curr_pose = poses[:,pose_start:pose_end]
                 Rs_predicted = compute_rotation_matrix_from_ortho6d(curr_pose)
                 Rs_predicted = Rs_predicted.detach().cpu().numpy()[0]
                 pose_start = pose_end
                 pose_end = pose_start + 6
 
-                conf = predicted_poses[:,k].detach().cpu().numpy()[0]
+                conf = confs[:,k].detach().cpu().numpy()[0]
                 if(conf > best_pose):
                     R_predicted = Rs_predicted
                     best_pose = conf
