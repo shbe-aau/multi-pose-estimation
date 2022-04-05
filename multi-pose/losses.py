@@ -321,6 +321,8 @@ def Loss(predicted_poses,
         num_views = len(views)
         num_objects = len(renderer.obj_paths)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
+        class_weight = config.getfloat('Loss_parameters', 'CLASSIFY_WEIGHT', fallback=1.0)
+        classify_objects=config.getboolean('Training','CLASSIFY_OBJECTS', fallback=False)
         pose_start = 0
         pose_end = pose_start + 6
 
@@ -328,6 +330,11 @@ def Loss(predicted_poses,
         gt_images = []
         predicted_images = []
         gt_imgs = renderer.renderBatch(Rs_gt, ts, ids)
+
+        # Seperate classes and pose predictions if classifying objects
+        if(classify_objects):
+            predicted_classes = predicted_poses[:,:num_objects]
+            predicted_poses = predicted_poses[:, num_objects:]
 
         # Split predicted poses into confidences and poses
         confs = predicted_poses[:,:(num_views*num_objects)]
@@ -407,7 +414,19 @@ def Loss(predicted_poses,
         dbg("depth loss {}".format(torch.mean(depth_losses)), dbg_losses)
         dbg("pose loss  {}".format(torch.mean(pose_losses)), dbg_losses)
 
-        batch_loss = depth_losses + pose_losses
+        # Calculate object classification loss
+        if(classify_objects):
+            class_loss_func = torch.nn.CrossEntropyLoss(reduction='none')
+            class_losses = class_loss_func(predicted_classes, torch.LongTensor(ids).to(renderer.device))
+            class_losses = class_losses*class_weight
+            batch_loss = depth_losses + pose_losses + class_losses
+
+            # Debug stuff...
+            print("class loss {}".format(torch.mean(class_losses)))
+            print("depth loss {}".format(torch.mean(depth_losses)))
+        else:
+            batch_loss = depth_losses + pose_losses
+
         batch_loss = batch_loss.unsqueeze(-1)
         loss = torch.mean(batch_loss)
         return loss, batch_loss, gt_imgs, predicted_imgs

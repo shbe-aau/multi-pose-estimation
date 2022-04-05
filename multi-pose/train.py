@@ -152,6 +152,7 @@ def main():
     model = Model(num_views=len(views),
                   num_objects=len(model_path_loss),
                   finetune_encoder=args.getboolean('Training','FINETUNE_ENCODER', fallback=False),
+                  classify_objects=args.getboolean('Training','CLASSIFY_OBJECTS', fallback=False),
                   weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""))
     model.to(device)
 

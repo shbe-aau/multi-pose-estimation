@@ -8,10 +8,11 @@ import torch.nn.functional as F
 # Network structure inspired by:
 # https://arxiv.org/pdf/1708.05628.pdf (see fig. 2)
 class Model(nn.Module):
-    def __init__(self, num_views=4, num_objects=1,
-                 weight_init_name="", finetune_encoder=False):
+    def __init__(self, num_views=4, num_objects=1, weight_init_name="",
+                 finetune_encoder=False, classify_objects=False):
         super(Model, self).__init__()
 
+        self.classify_objects = classify_objects
         self.weight_init_name = weight_init_name
         self.num_views = num_views
         self.num_objects = num_objects
@@ -44,6 +45,15 @@ class Model(nn.Module):
         self.bn1 = nn.BatchNorm1d(128)
         self.bn2 = nn.BatchNorm1d(64)
 
+        # Predict classes
+        if(self.classify_objects):
+            self.c1 = nn.Linear(128, 128)
+            self.c2 = nn.Linear(128, 64)
+            self.c3 = nn.Linear(64, self.num_objects)
+
+            self.bnc1 = nn.BatchNorm1d(128)
+            self.bnc2 = nn.BatchNorm1d(64)
+
         # Init weights
         self.apply(self.init_weights)
 
@@ -66,7 +76,17 @@ class Model(nn.Module):
         confs = y[:,:self.num_objects*self.num_views].reshape(-1,self.num_objects,self.num_views)
         confs = F.softmax(confs, dim=2)
         confs = confs.reshape(-1,self.num_objects*self.num_views)
-        return torch.cat([confs, y[:,self.num_objects*self.num_views:]], dim=1)
+
+        if(self.classify_objects is False):
+            return torch.cat([confs, y[:,self.num_objects*self.num_views:]], dim=1)
+
+        # Predict classes
+        c1 = F.relu(self.bnc1(self.c1(x0)))
+        c2 = F.relu(self.bnc2(self.c2(c1)))
+        classes = F.softmax(self.c3(c2), dim=1)
+
+        return torch.cat([classes, confs, y[:,self.num_objects*self.num_views:]], dim=1)
+
 
     def init_weights(self, m):
         if(type(m) == nn.Linear):
