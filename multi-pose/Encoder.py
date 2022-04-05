@@ -57,6 +57,10 @@ class Encoder(nn.Module):
         intermediate = encoder_batch_normalization_3_FusedBatchNorm.permute(0,2,3,1)
         encoder_Flatten_flatten_Reshape = torch.reshape(input = intermediate, shape = (-1,32768))
 
+        # Skip last layer if fine-tuning it in the Model class
+        if(self.encoder_dense_MatMul is None):
+            return encoder_Flatten_flatten_Reshape
+
         encoder_Flatten_flatten_strided_slice = encoder_Flatten_flatten_Shape[0:1]
         encoder_dense_MatMul = self.encoder_dense_MatMul(encoder_Flatten_flatten_Reshape)
         encoder_Flatten_flatten_Reshape_shape = [encoder_Flatten_flatten_strided_slice,encoder_Flatten_flatten_Reshape_shape_1]

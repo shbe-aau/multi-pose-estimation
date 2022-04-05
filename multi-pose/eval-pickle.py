@@ -39,23 +39,6 @@ def arr2str(arr):
         str_arr += "{0:.8f} ".format(flat_arr[i])
     return str_arr[:-1]
 
-def loadCheckpoint(model_path, device):
-    # Load checkpoint and parameters
-    checkpoint = torch.load(model_path, map_location=device)
-    epoch = checkpoint['epoch'] + 1
-
-    # Load model
-    num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-    model = Model(num_views=num_views).cuda()
-    model.load_state_dict(checkpoint['model'])
-
-    # Load optimizer
-    optimizer = torch.optim.Adam(model.parameters())
-    optimizer.load_state_dict(checkpoint['optimizer'])
-
-    print("Loaded the checkpoint: \n" + model_path)
-    return model, optimizer, epoch, None
-
 def correct_trans_offset(R, t_est):
     # Translation offset correction
     d_alpha_x = np.arctan(t_est[0]/t_est[2])
@@ -84,6 +67,15 @@ def main():
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
 
+    # Load configuration file
+    cfg_file_path = args.mp.replace("/models/{0}".format(args.mp.split('/')[-1]),"")
+    print(cfg_file_path)
+    cfg_file_path = glob.glob('{0}/*.cfg'.format(cfg_file_path))[0]
+    conf = configparser.ConfigParser()
+    conf.read(cfg_file_path)
+    num_views = len(json.loads(conf.get('Rendering', 'VIEWS')))
+    tune_encoder = conf.getboolean('Training','FINETUNE_ENCODER', fallback=False)
+
     # Run prepare our model if needed
     if("Rs_predicted" not in data):
 
@@ -91,16 +83,22 @@ def main():
         device = torch.device("cuda:0")
         torch.cuda.set_device(device)
 
-        # Initialize a model
-        model = Model().to(device)
+        # Initialize the model
+        model = Model(num_views=num_views,
+                      finetune_encoder=tune_encoder)
+        model.to(device)
 
         # Load model checkpoint
-        model, optimizer, epoch, learning_rate = loadCheckpoint(args.mp, device)
-        model.to(device)
+        checkpoint = torch.load(args.mp)
+
+        # Load model
+        model.load_state_dict(checkpoint['model'])
         model.eval()
 
         # Load and prepare encoder
         encoder = Encoder(args.ep).to(device)
+        if(tune_encoder):
+            encoder.encoder_dense_MatMul = None
         encoder.eval()
 
         # Setup the pipeline

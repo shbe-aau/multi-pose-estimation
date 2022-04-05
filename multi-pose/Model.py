@@ -8,12 +8,19 @@ import torch.nn.functional as F
 # Network structure inspired by:
 # https://arxiv.org/pdf/1708.05628.pdf (see fig. 2)
 class Model(nn.Module):
-    def __init__(self, num_views=4, weight_init_name=""):
+    def __init__(self, num_views=4, weight_init_name="", finetune_encoder=False):
         super(Model, self).__init__()
 
         self.weight_init_name = weight_init_name
         self.num_views = num_views
         self.output_size = self.num_views*(6+1)
+
+        # Place-holder for last FC layer in the encoder
+        self.finetune_encoder = finetune_encoder
+        if(self.finetune_encoder):
+            self.encoder = nn.Linear(32768,128)
+        else:
+            self.encoder = None
 
         # Upscale lantent vector
         self.l01 = nn.Linear(128,128)
@@ -39,7 +46,11 @@ class Model(nn.Module):
 
     # Input: x = lantent code
     # Output: y = pose as quaternion
-    def forward(self,x0):
+    def forward(self,model_in):
+        if(self.finetune_encoder):
+            x0 = self.encoder(model_in)
+        else:
+            x0 = model_in
         x1 = F.relu(self.bn01(self.l01(x0))) #output = 128
         x2 = F.relu(self.bn02(self.l02(torch.cat([x0, x1], dim=1))))
         x3 = F.relu(self.bn03(self.l03(torch.cat([x1, x2], dim=1))))

@@ -53,30 +53,6 @@ def latestCheckpoint(model_dir):
         return checkpoints_sorted[-1]
     return None
 
-# def loadCheckpoint(model_path):
-#     # Load checkpoint and parameters
-#     checkpoint = torch.load(model_path)
-#     epoch = checkpoint['epoch'] + 1
-
-#     # Load model
-#     num_views = int(checkpoint['model']['l3.bias'].shape[0]/(6+1))
-#     model = Model(num_views=num_views).cuda()
-
-#     model.load_state_dict(checkpoint['model'])
-
-#     # Load optimizer
-#     optimizer = torch.optim.Adam(model.parameters())
-#     optimizer.load_state_dict(checkpoint['optimizer'])
-
-#     try:
-#         lr_reducer = OneCycleLR(optimizer)
-#         lr_reducer.load_state_dict(checkpoint['lr_reducer'])
-#     except:
-#         lr_reducer = None
-
-#     print("Loaded the checkpoint: \n" + model_path)
-#     return model, optimizer, epoch, lr_reducer
-
 def loadDataset(file_list, batch_size=2):
     #data = {"codes":[],"Rs":[],"images":[]}
     data = []
@@ -174,8 +150,17 @@ def main():
 
     # Initialize a model using the renderer, mesh and reference image
     model = Model(num_views=len(views),
+                  finetune_encoder=args.getboolean('Training','FINETUNE_ENCODER', fallback=False),
                   weight_init_name=args.get('Training', 'WEIGHT_INIT_NAME', fallback=""))
     model.to(device)
+
+    # Fine-tune the last FC layer in the encoder
+    encoder = Encoder(args.get('Dataset', 'ENCODER_WEIGHTS')).to(device)
+    if(model.finetune_encoder):
+        # Copy FC layer from the encoder to the model
+        model.encoder.state_dict()['weight'].copy_(encoder.encoder_dense_MatMul.state_dict()['weight'])
+        model.encoder.state_dict()['bias'].copy_(encoder.encoder_dense_MatMul.state_dict()['bias'])
+        encoder.encoder_dense_MatMul = None
 
     # Create an optimizer. Here we are using Adam and we pass in the parameters of the model
     low_lr = args.getfloat('Training', 'LEARNING_RATE_LOW')
@@ -238,9 +223,8 @@ def main():
 
 
     # Prepare pipeline
-    encoder = Encoder(args.get('Dataset', 'ENCODER_WEIGHTS')).to(device)
-    encoder.eval()
     pipeline = Pipeline(encoder, model, device)
+    encoder.eval()
 
     # Handle loading of multiple object paths and translations
     try:
@@ -380,31 +364,11 @@ def runEpoch(br, dataset, model,
             loss.backward()
             optimizer.step()
 
-            # # #Save difficult samples
-            # k = int(len(curr_batch["images"])*(dataset.hard_mining_ratio))
-            # batch_loss = batch_loss.squeeze()
-            # top_val, top_ind = torch.topk(batch_loss, k)
-            # hard_samples = Rs[top_ind]
-            # hard_indeces = list(top_ind)
-
-            # # Dump hard samples to file
-            # hard_dump_dir= os.path.join(output_path, "images/epoch{0}/hard".format(epoch))
-            # prepareDir(hard_dump_dir)
-
-            # hard_dict = {"Rs":hard_samples,
-            #              "losses":list(top_val)}
-
-            # csv_file = os.path.join(hard_dump_dir,"hard_epoch{0}-batch{1}.csv".format(epoch,i))
-            # with open(csv_file, "w") as outfile:
-            #     writer = csv.writer(outfile)
-            #     writer.writerow(hard_dict.keys())
-            #     writer.writerows(zip(*hard_dict.values()))
-
-            # # Convert hard samples to a list
-            # hard_list = []
-            # for h in np.arange(hard_samples.shape[0]):
-            #     hard_list.append(hard_samples[h])
-            # dataset.hard_samples = hard_list
+            # DEBUG! REMOVE
+            print("Encoder conv: ", torch.sum(pipeline.encoder.encoder_conv2d_Conv2D.weight))
+            print("Encoder FC (encoder): ", None if pipeline.encoder.encoder_dense_MatMul is None else torch.sum(pipeline.encoder.encoder_dense_MatMul.weight))
+            print("Encoder FC (model): ", None if pipeline.model.encoder is None else torch.sum(pipeline.model.encoder.weight))
+            print("Pose network: ", torch.sum(pipeline.model.l3.weight))
 
         #detach all from gpu
         loss.detach().cpu().numpy()
