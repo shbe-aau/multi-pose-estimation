@@ -5,6 +5,7 @@ APPROACH_NAME=$2 #e.g "sundermeyer"
 TRAINED_MODEL=$3 #e.g "multi-pose/output/pose/obj19-10-poses-aug-bg-dataset/models/model-epoch20.pt"
 DATA_SPLIT=$4 #e.g. "train"
 DATASET=$5 #e.g. "tless" or "lm"
+OBJIDS=$6 #e.g. "gt" or "model"
 
 if test "$DATASET" = "tless"; then
     SUB_DATASET="primesense"
@@ -55,7 +56,7 @@ if test "$APPROACH_NAME" = "sundermeyer"; then
 	if test -f "$SM_CSV_PATH"; then
 	    echo $(date +%T) " - CSV with results from Sundermeyers approach already exists, skipping..."
 	else
-	    ${PYTORCH_DOCKER} python multi-pose/eval-pickle.py -pi /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/${APPROACH_NAME}-result-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/sundermeyer-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}-${SUB_DATASET}.csv > log.out # -op multi-pose/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
+	    ${PYTORCH_DOCKER} python multi-pose/eval-pickle.py -pi /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/${APPROACH_NAME}-result-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/sundermeyer-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}-${SUB_DATASET}.csv -oid ${OBJIDS} > log.out # -op multi-pose/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	    wait
 	fi
     fi
@@ -65,7 +66,7 @@ else
 	echo $(date +%T) " - CSV with results already exists, skipping..."
     else
 	ENCODER_WEIGHTS="multi-pose/data/encoder/obj1-18/encoder.npy"
-	${PYTORCH_DOCKER} python multi-pose/eval-pickle.py -pi /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/${DATASET}-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}-${SUB_DATASET}.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} > log.out #-op multi-pose/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
+	${PYTORCH_DOCKER} python multi-pose/eval-pickle.py -pi /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/${DATASET}-${DATA_SPLIT}-obj${OBJ_ID}.p -o /shared-folder/multi-pose/data/${DATASET}/output/${DATA_SPLIT}-${SUB_DATASET}/obj${OBJ_ID}/${APPROACH_NAME}-obj${OBJ_ID}_${DATASET}-${DATA_SPLIT}-${SUB_DATASET}.csv -ep ${ENCODER_WEIGHTS} -mp ${TRAINED_MODEL} -oid ${OBJIDS} #> log.out #-op multi-pose/data/${DATASET}-obj${OBJ_ID}/cad/obj_${OBJ_ID}.ply
 	wait
     fi
 

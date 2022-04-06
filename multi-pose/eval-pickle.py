@@ -54,6 +54,7 @@ def correct_trans_offset(R, t_est):
 
 def main():
     visualize = True
+    use_classifier = False
 
     # Read configuration file
     parser = argparse.ArgumentParser()
@@ -62,7 +63,11 @@ def main():
     parser.add_argument("-pi", help="path to the pickle input file")
     parser.add_argument("-op", help="path to the CAD model for the object", default=None)
     parser.add_argument("-o", help="output path", default="./output.csv")
+    parser.add_argument("-oid", help="where get the obj IDs from (GT or model)", default=None)
     args = parser.parse_args()
+
+    if(args.oid is not None and args.oid == "model"):
+        use_classifier = True
 
     # Load dataset
     data = pickle.load(open(args.pi,"rb"), encoding="latin1")
@@ -81,6 +86,7 @@ def main():
     num_objects = len(model_path_loss)
     num_views = len(json.loads(conf.get('Rendering', 'VIEWS')))
     tune_encoder = conf.getboolean('Training','FINETUNE_ENCODER', fallback=False)
+    classifier_in_model = conf.getboolean('Training','CLASSIFY_OBJECTS', fallback=False)
 
     # Prepare object mapping for using GT obj IDs
     obj_mapping = {}
@@ -105,7 +111,8 @@ def main():
         # Initialize the model
         model = Model(num_views=num_views,
                       num_objects=num_objects,
-                      finetune_encoder=tune_encoder)
+                      finetune_encoder=tune_encoder,
+                      classify_objects=classifier_in_model)
         model.to(device)
 
         # Load model checkpoint
@@ -163,6 +170,11 @@ def main():
             best_pose = 0.0
             R_predicted = None
 
+            # Seperate classes and pose predictions
+            if(classifier_in_model):
+                predicted_classes = predicted_poses[:,:num_objects]
+                predicted_poses = predicted_poses[:, num_objects:]
+
             # Seperate prdiction into confidences and poses
             confs = predicted_poses[:,:(num_views*num_objects)]
             poses = predicted_poses[:,(num_views*num_objects):]
@@ -170,8 +182,11 @@ def main():
             # Mask stuff according to ID if outputting multiple objects
             if(num_objects > 1):
                 ids = [obj_mapping[data["obj_ids"][i]]]
-
                 idx_mask = torch.tensor(ids)
+
+                if(use_classifier):
+                    idx_mask = torch.argmax(predicted_classes, dim=1)
+
                 confs = confs.reshape(-1,num_objects,num_views)
                 confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
 
