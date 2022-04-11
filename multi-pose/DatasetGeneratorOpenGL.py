@@ -164,6 +164,9 @@ class DatasetGenerator():
                 #print("generated random pose: ", len(self.poses))
             self.pose_sampling = self.reuse_poses
 
+    def __len__(self):
+        return int(self.max_samples/self.batch_size)
+
     def reuse_poses(self):
         rand_id = np.random.choice(20*1000,1,replace=False)[0]
         #print("re-using pose: ", rand_id)
