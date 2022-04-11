@@ -12,11 +12,8 @@ class DatasetGenerator(torch.utils.data.Dataset):
         self.data = self.load_pbr_dataset(self.pbr_path)
         self.data_combined = []
 
-        # Remove leading zeros
-        self.obj_ids = [str(int(o)) for o in obj_ids]
-
         # Create combined list with all objects
-        for new_id,old_id in enumerate(self.obj_ids):
+        for new_id,old_id in enumerate(obj_ids):
             curr_obj = self.data[old_id]
             for i,_ in enumerate(curr_obj):
                 curr_obj[i]['obj_id'] = new_id
