@@ -39,16 +39,16 @@ p = {
       'vsd_normalized_by_diameter': True,
       'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
     },
-    {
-      'n_top': -1,
-      'type': 'mssd',
-      'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
-    },
-    {
-      'n_top': -1,
-      'type': 'mspd',
-      'correct_th': [[th] for th in np.arange(5, 51, 5)]
-    },
+    # {
+    #   'n_top': -1,
+    #   'type': 'mssd',
+    #   'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
+    # },
+    # {
+    #   'n_top': -1,
+    #   'type': 'mspd',
+    #   'correct_th': [[th] for th in np.arange(5, 51, 5)]
+    # },
   ],
 
   # Minimum visible surface fraction of a valid GT pose.
@@ -246,8 +246,8 @@ for result_filename in p['result_filenames']:
       average_recalls[error['type']]
 
   # Final score for the given dataset.
-  final_scores['bop19_average_recall'] = np.mean([average_recalls['vsd'], average_recalls['mssd'], average_recalls['mspd']])
-  #final_scores['bop19_average_recall'] = np.mean([average_recalls['vsd']])
+  #final_scores['bop19_average_recall'] = np.mean([average_recalls['vsd'], average_recalls['mssd'], average_recalls['mspd']])
+  final_scores['bop19_average_recall'] = np.mean([average_recalls['vsd']])
 
   # Average estimation time per image.
   final_scores['bop19_average_time_per_image'] = average_time_per_image

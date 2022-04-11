@@ -38,16 +38,16 @@ p = {
       'vsd_taus': list(np.arange(0.05, 0.51, 0.05)),
       'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
     },
-    {
-      'n_top': -1,
-      'type': 'mssd',
-      'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
-    },
-    {
-      'n_top': -1,
-      'type': 'mspd',
-      'correct_th': [[th] for th in np.arange(5, 51, 5)]
-    },
+    # {
+    #   'n_top': -1,
+    #   'type': 'mssd',
+    #   'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
+    # },
+    # {
+    #   'n_top': -1,
+    #   'type': 'mspd',
+    #   'correct_th': [[th] for th in np.arange(5, 51, 5)]
+    # },
   ],
 
   # Minimum visible surface fraction of a valid GT pose.
@@ -167,8 +167,8 @@ for result_filename in p['result_filenames']:
     misc.log('Average Recall {}: {}'.format(err_type,
       aur[err_type]))
 
-  if set(['vsd', 'mssd', 'mspd']).issubset(err_types):
-  #if set(['vsd']).issubset(err_types):
+  #if set(['vsd', 'mssd', 'mspd']).issubset(err_types):
+  if set(['vsd']).issubset(err_types):
     test_set = os.path.basename(result_filename)
     mean_error = np.mean([aur[err_type] for err_type in err_types])
     misc.log('Average BOP score on {}: {}'.format(test_set, mean_error))
