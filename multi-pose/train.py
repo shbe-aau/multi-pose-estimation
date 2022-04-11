@@ -236,19 +236,31 @@ def main():
         model_path_data = [args.get('Dataset', 'MODEL_PATH_DATA')]
         translations = [np.array(json.loads(args.get('Rendering', 'T')))]
 
-    # Prepare datasets
-    bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
-    training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
-                                     model_path_data,
-                                     translations,
-                                     args.getint('Training', 'BATCH_SIZE'),
-                                     "not_used",
-                                     device,
-                                     sampling_method = args.get('Training', 'VIEW_SAMPLING'),
-                                     max_rel_offset = args.getfloat('Training', 'MAX_REL_OFFSET', fallback=0.2),
-                                     augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
-                                     seed=args.getint('Training', 'RANDOM_SEED'))
-    training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
+
+    # Check if training based on PBR using DataLoader is enabled
+    try:
+        pbr_path = args.get('Dataset', 'PBR_PATH')
+        obj_ids = json.loads(args.get('Dataset', 'PBR_OBJ_IDS'))
+
+        from DatasetPBR import DatasetGenerator
+        training_dataset = DatasetGenerator(pbr_path, obj_ids)
+        training_data = torch.utils.data.DataLoader(training_dataset, args.getint('Training', 'BATCH_SIZE'), shuffle=True, num_workers=2)
+
+    except: # Default to old approach in case the above fails
+        # Prepare datasets
+        from DatasetGeneratorOpenGL import DatasetGenerator
+        bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
+        training_data = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
+                                         model_path_data,
+                                         translations,
+                                         args.getint('Training', 'BATCH_SIZE'),
+                                         "not_used",
+                                         device,
+                                         sampling_method = args.get('Training', 'VIEW_SAMPLING'),
+                                         max_rel_offset = args.getfloat('Training', 'MAX_REL_OFFSET', fallback=0.2),
+                                         augment_imgs = args.getboolean('Training', 'AUGMENT_IMGS', fallback=True),
+                                         seed=args.getint('Training', 'RANDOM_SEED'))
+        training_data.max_samples = args.getint('Training', 'NUM_SAMPLES')
 
     # Load the validationset
     try:
@@ -356,6 +368,15 @@ def runEpoch(br, dataset, model,
         if(model.training):
             optimizer.zero_grad()
 
+        if(isinstance(dataset, torch.utils.data.DataLoader)):
+            # We must be using DataLoader
+            # re-format data to fit the old way
+            curr_batch_tmp = {}
+            curr_batch_tmp["images"] = curr_batch[0].numpy()
+            curr_batch_tmp["Rs"] = curr_batch[1][1]
+            curr_batch_tmp["ids"] = curr_batch[1][0]
+            curr_batch = curr_batch_tmp
+
         # Fetch images
         input_images = curr_batch["images"]
 
@@ -395,7 +416,7 @@ def runEpoch(br, dataset, model,
         predicted_images.detach().cpu().numpy()
 
         if(model.training):
-            print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,round(dataset.max_samples/batch_size), len(Rs),torch.mean(batch_loss)))
+            print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,len(dataset), len(Rs),torch.mean(batch_loss)))
         else:
             print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,len(dataset), len(Rs),torch.mean(batch_loss)))
             #print("Test batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1, round(dataset.max_samples/batch_size), len(Rs),torch.mean(batch_loss)))
