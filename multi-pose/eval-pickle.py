@@ -93,6 +93,8 @@ def main():
     #obj_mapping[real_obj_id] = obj number in NN output
     obj_mapping[1] = 0
     obj_mapping[2] = 0
+    obj_mapping[3] = 0
+    obj_mapping[4] = 0
     obj_mapping[5] = 1
     obj_mapping[6] = 1
     obj_mapping[10] = 2
@@ -181,11 +183,11 @@ def main():
 
             # Mask stuff according to ID if outputting multiple objects
             if(num_objects > 1):
-                ids = [obj_mapping[data["obj_ids"][i]]]
-                idx_mask = torch.tensor(ids)
-
                 if(use_classifier):
                     idx_mask = torch.argmax(predicted_classes, dim=1)
+                else:
+                    ids = [obj_mapping[data["obj_ids"][i]]]
+                    idx_mask = torch.tensor(ids)
 
                 confs = confs.reshape(-1,num_objects,num_views)
                 confs = confs[torch.arange(confs.size(0)), idx_mask].squeeze(1)
