@@ -84,10 +84,43 @@ def cross_product( u, v):
 #poses
 def compute_rotation_matrix_from_ortho6d(poses):
     x_raw = poses[:,0:3]#batch*3
+
+    # SHBE - fix, x cannot be zero
+    is_close = torch.isclose(x_raw, torch.tensor(0.0), atol=5e-5).all(
+        dim=1, keepdim=True
+    )
+    if is_close.any():
+        replacement = torch.tensor([1.0, 0.0, 0.0]).repeat(x_raw.shape[0],1).cuda()
+        x_raw = torch.where(is_close, replacement, x_raw)
+
     y_raw = poses[:,3:6]#batch*3
+
+    # SHBE - fix, y cannot be zero
+    is_close = torch.isclose(y_raw, torch.tensor(0.0), atol=5e-5).all(
+        dim=1, keepdim=True
+    )
+    if is_close.any():
+        replacement = torch.tensor([0.0, 1.0, 0.0]).repeat(y_raw.shape[0],1).cuda()
+        y_raw = torch.where(is_close, replacement, y_raw)
 
     x = normalize_vector(x_raw) #batch*3
     z = cross_product(x,y_raw) #batch*3
+
+    # SHBE - fix, z cannot be zero
+    is_close = torch.isclose(z, torch.tensor(0.0), atol=5e-5).all(
+        dim=1, keepdim=True
+    )
+    if is_close.any():
+        replacement = torch.tensor([1.0, 0.0, 0.0]).repeat(x.shape[0],1).cuda()
+        x = torch.where(is_close, replacement, x)
+
+        # replacement = torch.tensor([0.0, 1.0, 0.0]).repeat(y.shape[0],1).cuda()
+        # y = torch.where(is_close, replacement, y)
+
+        replacement = torch.tensor([0.0, 0.0, 1.0]).repeat(z.shape[0],1).cuda()
+        z = torch.where(is_close, replacement, z)
+
+
     z = normalize_vector(z)#batch*3
     y = cross_product(z,x)#batch*3
 
@@ -95,6 +128,7 @@ def compute_rotation_matrix_from_ortho6d(poses):
     y = y.view(-1,3,1)
     z = z.view(-1,3,1)
     matrix = torch.cat((x,y,z), 2) #batch*3*3
+
     return matrix
 
 #u,a batch*3
