@@ -22,6 +22,8 @@ ARG UBUNTU_VERSION=18.04
 FROM nvidia/cudagl:10.0-devel-ubuntu${UBUNTU_VERSION} as base
 
 # Required for Python3.6
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
 RUN apt-get update && apt-get -q install -y \
     python3-pip \
     python3 \
