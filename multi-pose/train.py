@@ -414,6 +414,13 @@ def runEpoch(br, dataset, model,
         gt_images.detach().cpu().numpy()
         predicted_images.detach().cpu().numpy()
 
+
+        # Check for nan loss
+        if(torch.isnan(loss)):
+            print("nan loss !!!! OH NOOOOO!!!")
+            stop
+
+        
         if(model.training):
             print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,len(dataset), len(Rs),torch.mean(batch_loss)))
         else:

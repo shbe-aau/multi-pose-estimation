@@ -19,7 +19,8 @@ class Pipeline():
                 # Normalize image
                 img_max = np.max(img)
                 img_min = np.min(img)
-                img = (img - img_min)/(img_max - img_min)
+                if(img_max > img_min): # avoids divide by zero issue
+                    img = (img - img_min)/(img_max - img_min)
 
                 # Prepare the images for the encoder
                 img = torch.from_numpy(img).unsqueeze(0).permute(0,3,1,2).to(self.device)
