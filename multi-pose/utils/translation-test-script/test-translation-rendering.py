@@ -153,7 +153,7 @@ def correct_R(R, t_est):
 
 
 def test_pose(R_in, t_in, label="test_pose1", gt_img_path=None):
-    center_render_size = 128
+    center_render_size = 256
 
     # Render with original rotation and translation
     R1, t1 = opengl2pytorch3d(R_in,t_in)
@@ -197,21 +197,50 @@ def test_pose(R_in, t_in, label="test_pose1", gt_img_path=None):
         plt.title("small render - corrected")
     else:
         org_img = cv2.imread(gt_img_path)
-        plt.subplot(2, 2, 1)
+        plt.subplot(2, 3, 1)
         plt.imshow((org_img))#.astype(np.uint8))
         plt.title("original image")
 
-        plt.subplot(2, 2, 2)
+        plt.subplot(2, 3, 2)
         plt.imshow((img_org))#.astype(np.uint8))
         plt.title("full render")
 
-        plt.subplot(2, 2, 3)
+        plt.subplot(2, 3, 4)
         plt.imshow((img_centered))#.astype(np.uint8))
         plt.title("small render")
 
-        plt.subplot(2, 2, 4)
+        plt.subplot(2, 3, 5)
         plt.imshow((img_centered_corrected))#.astype(np.uint8))
         plt.title("small render - corrected")
+
+        # Crop full render
+        full_median = np.median(img_org)
+        img_org[img_org == full_median] = 0
+        ys, xs = np.nonzero(img_org[:,:] > 0)
+        full_obj_bb = calc_2d_bbox(xs,ys,[img_org.shape[1],img_org.shape[0]])
+        full_cropped = extract_square_patch(img_org, full_obj_bb)
+
+        plt.subplot(2, 3, 3)
+        corrected_full_cropped = full_cropped.copy()
+        corrected_full_cropped[corrected_full_cropped == 0] = full_median
+        plt.imshow((corrected_full_cropped))#.astype(np.uint8))
+        plt.title("full render cropped")
+
+        # Calc and plot difference between full render and small corrected rendering
+        #img_centered_corrected = img_centered # uncomment to try without any corrections
+        cc_median = np.median(img_centered_corrected)
+        img_centered_corrected[img_centered_corrected == cc_median] = 0
+        ys, xs = np.nonzero(img_centered_corrected[:,:] > 0)
+        cc_obj_bb = calc_2d_bbox(xs,ys,[img_centered_corrected.shape[1],
+                                        img_centered_corrected.shape[0]])
+        cc_cropped = extract_square_patch(img_centered_corrected, cc_obj_bb)
+        diff = np.abs(cc_cropped - full_cropped)
+
+        plt.subplot(2, 3, 6)
+        plt.imshow(diff)#.astype(np.uint8))
+        plt.title("diff: full vs small")
+
+
 
     fig.tight_layout()
     fig.savefig(label+".png", dpi=fig.dpi)
