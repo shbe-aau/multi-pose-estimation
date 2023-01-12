@@ -93,7 +93,10 @@ def main():
     parser.add_argument("experiment_name")
     arguments = parser.parse_args()
 
-    cfg_file_path = os.path.join("./experiments", arguments.experiment_name)
+    if(arguments.experiment_name.startswith('./experiments')):
+        cfg_file_path = arguments.experiment_name
+    else:
+        cfg_file_path = os.path.join("./experiments", arguments.experiment_name)
     args = configparser.ConfigParser()
     args.read(cfg_file_path)
 
