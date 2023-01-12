@@ -3,9 +3,9 @@ install
 *.pyc
 *.vscode
 *.egg-info
-*pytorch3d/data
-*pytorch3d/experiments
-*pytorch3d/output
+*multi-pose/data
+*multi-pose/experiments
+*multi-pose/output
 /AAE_workspace
 *~
 *.png
@@ -14,6 +14,6 @@ install
 *.obj
 *#
 *.gif
-/pytorch3d/experiments
-/pytorch3d/output
-/pytorch3d/data
+/multi-pose/experiments
+/multi-pose/output
+/multi-pose/data
