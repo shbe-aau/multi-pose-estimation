@@ -1,3 +1,6 @@
+.env
+cub*
+*.tar.gz
 install
 *.npy
 *.pyc

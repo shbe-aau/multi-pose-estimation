@@ -1,4 +1,4 @@
-## Pose  Estimation  from  RGB  Images  of  Highly  Symmetric  Objects using  a  Novel  Multi-Pose  Loss  and  Differential  Rendering
+# Pose  Estimation  from  RGB  Images  of  Highly  Symmetric  Objects using  a  Novel  Multi-Pose  Loss  and  Differential  Rendering
 
 ## Overview
 
@@ -9,6 +9,8 @@ We propose a novel multi-pose loss function to train a neural network for 6D pos
 <p>
 
 ## Setup
+
+### Docker Setup
 
 1) Install docker and setup nvidia runtime environment.
    - Install nvidia-docker2
@@ -30,6 +32,43 @@ We propose a novel multi-pose loss function to train a neural network for 6D pos
 Tested working on Ubuntu 16.04 LTS with Docker 18.09.7 and NVIDIA docker 2.3.0, and on Ubuntu 16.04 LTS with Docker 19.03.4 and NVIDIA docker 2.3.0.
 
 A pre built image can be found at: https://hub.docker.com/r/shbe/pytorch3d_multi_pose
+
+### Local Setup
+
+This has been tested on Ubuntu 20.04 with nvidia-drivers and CUDA 11.6 already installed and exported with `export CUDA_HOME=/usr/local/cuda-11.6`.
+
+1) Install all debian package dependencies
+```bash
+sudo apt install python3 python3-pip git libfontconfig1-dev curl python3-virtualenv libglfw3-dev libassimp-dev libassimp5 python3-pyassimp
+```
+
+2) Create a virtualenv for python dependencies - you will be reusing assimp and opencv from your system (and ROS) installation.
+```bash
+cd ${PROJECT_FOLDER}
+virtualenv --system-site-packages .env
+source .env/bin/activate
+```
+
+3) Install the python dependencies on the virtual environment
+```bash
+pip3 install --upgrade pip
+
+pip3 install cython numpy cyglfw3 imageio==2.6.0 imgaug progressbar configparser matplotlib scikit-image pypng pytz glumpy pyopengl pyglet vispy ruamel.yaml opencv-contrib-python
+
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+
+curl -LO https://github.com/NVIDIA/cub/archive/refs/tags/1.17.2.tar.gz
+tar -xzf 1.17.2.tar.gz
+export CUB_HOME=$PWD/cub-1.17.2
+
+export FORCE_CUDA=1
+pip3 install 'git+https://github.com/facebookresearch/pytorch3d.git@v0.7.2'
+```
+
+4) Use your prefered text editor (or sed) to replace all obsolete numpy types from imgaug. The types that need to be replaced are
+`np.float` -> `np.float_`
+`np.bool` -> `np.bool_`
+Be careful, `np.float32` or `np.float64` should not be replaced, only `np.float` should!
 
 ## Prepare models and data
 
