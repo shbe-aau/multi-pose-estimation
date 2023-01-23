@@ -30,7 +30,7 @@ def main():
         print('export AE_WORKSPACE_PATH=/path/to/workspace\n')
         exit(-1)
 
-    gentle_stop = np.array((1,), dtype=np.bool)
+    gentle_stop = np.array((1,), dtype=np.bool_)
     gentle_stop[0] = False
 
     def on_ctrl_c(signal, frame):

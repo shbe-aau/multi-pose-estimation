@@ -446,7 +446,7 @@ class DatasetGenerator():
         aug_R = np.dot(curr_R, self.random_aug)
 
         # Convert R matrix from opengl to pytorch format
-        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip = np.eye(3, dtype=np.float_)
         xy_flip[0,0] = -1.0
         xy_flip[1,1] = -1.0
         R_conv = np.transpose(aug_R)
@@ -554,7 +554,7 @@ class DatasetGenerator():
         R = R[:3,:3]
 
         # Convert R matrix from opengl to pytorch format
-        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip = np.eye(3, dtype=np.float_)
         xy_flip[0,0] = -1.0
         xy_flip[1,1] = -1.0
         R_conv = np.transpose(R)
@@ -691,7 +691,7 @@ class DatasetGenerator():
 
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
-            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip = np.eye(3, dtype=np.float_)
             xy_flip[0,0] = -1.0
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
@@ -778,7 +778,7 @@ class DatasetGenerator():
 
             # Convert R matrix from pytorch to opengl format
             # for rendering only!
-            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip = np.eye(3, dtype=np.float_)
             xy_flip[0,0] = -1.0
             xy_flip[1,1] = -1.0
             R_opengl = np.dot(R,xy_flip)
@@ -867,7 +867,7 @@ class DatasetGenerator():
                 image_aug = self.aug(images=image_aug)
 
             ## Convert to float and discard alpha channel
-            image_aug = image_aug[0].astype(np.float)/255.0
+            image_aug = image_aug[0].astype(np.float_)/255.0
             images.append(image_aug[:,:,:3])
 
         data = {"ids":curr_ids,

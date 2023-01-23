@@ -121,20 +121,20 @@ def load_ply(path):
 
     # Prepare data structures
     model = {}
-    model['pts'] = np.zeros((n_pts, 3), np.float)
+    model['pts'] = np.zeros((n_pts, 3), np.float_)
     if n_faces > 0:
-        model['faces'] = np.zeros((n_faces, face_n_corners), np.float)
+        model['faces'] = np.zeros((n_faces, face_n_corners), np.float_)
 
     pt_props_names = [p[0] for p in pt_props]
     is_normal = False
     if {'nx', 'ny', 'nz'}.issubset(set(pt_props_names)):
         is_normal = True
-        model['normals'] = np.zeros((n_pts, 3), np.float)
+        model['normals'] = np.zeros((n_pts, 3), np.float_)
 
     is_color = False
     if {'red', 'green', 'blue'}.issubset(set(pt_props_names)):
         is_color = True
-        model['colors'] = np.zeros((n_pts, 3), np.float)
+        model['colors'] = np.zeros((n_pts, 3), np.float_)
 
     formats = { # For binary format
         'float': ('f', 4),

@@ -65,7 +65,7 @@ def loadDataset(file_list, batch_size=2, obj_id=0):
                 curr_pose = curr_data["Rs"][i]
 
                 # Convert from T-LESS to Pytorch3D format
-                xy_flip = np.eye(3, dtype=np.float)
+                xy_flip = np.eye(3, dtype=np.float_)
                 xy_flip[0,0] = -1.0
                 xy_flip[1,1] = -1.0
                 curr_pose = np.transpose(curr_pose)

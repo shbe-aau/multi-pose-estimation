@@ -35,7 +35,7 @@ def project_pts(pts, K, R, t):
 
 def norm_depth(depth, valid_start=0.2, valid_end=1.0):
     mask = depth > 0
-    depth_n = depth.astype(np.float)
+    depth_n = depth.astype(np.float_)
     depth_n[mask] -= depth_n[mask].min()
     depth_n[mask] /= depth_n[mask].max() / (valid_end - valid_start)
     depth_n[mask] += valid_start

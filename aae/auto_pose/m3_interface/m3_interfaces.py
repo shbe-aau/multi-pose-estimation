@@ -350,7 +350,7 @@ def preprocess_image_colors_type(
         image = (image * 255).astype(np.uint8)
         changed = True
     elif type_in == np.uint8 and type_out == np.float:
-        image = image.astype(np.float) / 255
+        image = image.astype(np.float_) / 255
         changed = True
 
     return image, changed

@@ -30,7 +30,7 @@ class DatasetGenerator(torch.utils.data.Dataset):
         R_gt = curr_item['R']
 
         # Convert R matrix from opengl to pytorch format
-        xy_flip = np.eye(3, dtype=np.float)
+        xy_flip = np.eye(3, dtype=np.float_)
         xy_flip[0,0] = -1.0
         xy_flip[1,1] = -1.0
         R_conv = np.transpose(np.array(R_gt).reshape(3,3))
