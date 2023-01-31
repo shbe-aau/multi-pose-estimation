@@ -130,7 +130,7 @@ def gen_data(datagen, name, data_dir, width, height, last_num=0):
                     label_file.write("{} {} {} {} {}\n".format(object["obj_id"], cx, cy, w, h))
 
             # write image name as row in imlistfile to put in correct subset
-            imlistfile.write("{}\n".format(im_file))
+            imlistfile.write("./images/{}.png\n".format(ind))
 
         return ind
 
