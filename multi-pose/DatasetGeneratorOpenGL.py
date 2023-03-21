@@ -222,6 +222,11 @@ class DatasetGenerator():
             for j,fname in enumerate(file_list):
                 print('loading bg img %s/%s' % (j,noof_bg_imgs))
                 bgr = cv2.imread(fname)
+
+                # Upscale all BG images to twice the size when generating full scenes
+                if(self.gen_scenes):
+                    bgr = cv2.resize(bgr, (0,0), fx=2.0, fy=2.0) 
+                
                 H,W = bgr.shape[:2]
                 y_anchor = int(np.random.rand() * (H-shape[0]))
                 x_anchor = int(np.random.rand() * (W-shape[1]))
@@ -838,6 +843,21 @@ class DatasetGenerator():
         # merge images
         objects, merged_img = self.merge_by_depth(objects)
 
+        # add random background
+        if(len(self.backgrounds) > 0):
+            bg_im_isd = np.random.choice(len(self.backgrounds), replace=False)
+            img_back = self.backgrounds[bg_im_isd]
+            img_back = cv.cvtColor(img_back, cv.COLOR_RGB2RGBA).astype(float)
+            alpha = merged_img[:, :, 0:3].astype(float)
+            sum_img = np.sum(merged_img[:,:,:3], axis=2)
+            alpha[sum_img > 0] = 1
+
+            merged_img[:, :, 0:3] = merged_img[:, :, 0:3] * alpha + img_back[:, :, 0:3] * (1 - alpha)
+        else:
+            merged_img = merged_img[:, :, 0:3]
+        
+
+        # augment images
         augmented_img = self.augment_image(merged_img, augment)
 
         return augmented_img, objects
