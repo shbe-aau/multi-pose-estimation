@@ -49,8 +49,6 @@ def main():
                                            fx=args.getfloat('Rendering', 'FOCAL_X', fallback=1075.65091572),
                                            fy=args.getfloat('Rendering', 'FOCAL_Y', fallback=1073.90347929))
 
-    #bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
-    bg_path = "/home/hampus/vision/PyTorch-YOLOv3/data/coco/images/val2014"
     datagen = DatasetGenerator(args.get('Dataset', 'BACKGROUND_IMAGES'),
                                      model_path_data,
                                      translations,
