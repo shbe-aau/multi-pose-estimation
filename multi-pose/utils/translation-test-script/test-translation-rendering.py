@@ -246,26 +246,36 @@ def test_pose(R_in, t_in, label="test_pose1", gt_img_path=None):
     fig.savefig(label+".png", dpi=fig.dpi)
     plt.close()
 
-
-# Test pose 1 - img 173 - tless test scene 5
-R = np.array([-0.99983527, -0.01806117, -0.00180892,
-             -0.01305949, 0.78496276, -0.61940498,
-             0.01260709, -0.61927948, -0.78506983]).reshape(3,3)
-t = np.array([35.34602246, -91.73294348, 822.05119118])
-test_pose(R, t, label="test1", gt_img_path="scene5-0173.png")
-
-
-# Test pose 2 - img 224 - tless test scene 5
-R = np.array([0.28054173, 0.95984022, 0.00188783,
-              0.66742699, -0.19366099, -0.71905247,
-              -0.68981014, 0.20298377, -0.69495254]).reshape(3,3)
-t = np.array([-110.08269362, -36.32032878, 778.81290559])
-test_pose(R, t, label="test2", gt_img_path="scene5-0224.png")
+def main():
+    # Test pose 1 - img 173 - tless test scene 5
+    R = np.array([-0.99983527, -0.01806117, -0.00180892,
+                -0.01305949, 0.78496276, -0.61940498,
+                0.01260709, -0.61927948, -0.78506983]).reshape(3,3)
+    t = np.array([35.34602246, -91.73294348, 822.05119118])
+    test_pose(R, t, label="test1", gt_img_path="scene5-0173.png")
 
 
-# Test pose 3 - img 267 - tless test scene 16
-R = np.array([-0.38061412, -0.92458875, 0.01638160,
-              -0.62964205, 0.24614153, -0.73686100,
-              0.67726103, -0.29077422, -0.67584500]).reshape(3,3)
-t = np.array([117.04503082, -12.69796681, 765.34612140])
-test_pose(R, t, label="test3", gt_img_path="scene16-0267.png")
+    # Test pose 2 - img 224 - tless test scene 5
+    R = np.array([0.28054173, 0.95984022, 0.00188783,
+                0.66742699, -0.19366099, -0.71905247,
+                -0.68981014, 0.20298377, -0.69495254]).reshape(3,3)
+    t = np.array([-110.08269362, -36.32032878, 778.81290559])
+    test_pose(R, t, label="test2", gt_img_path="scene5-0224.png")
+
+
+    # Test pose 3 - img 267 - tless test scene 16
+    R = np.array([-0.38061412, -0.92458875, 0.01638160,
+                -0.62964205, 0.24614153, -0.73686100,
+                0.67726103, -0.29077422, -0.67584500]).reshape(3,3)
+    t = np.array([117.04503082, -12.69796681, 765.34612140])
+    test_pose(R, t, label="test3", gt_img_path="scene16-0267.png")
+
+    # Test pose 4 - live capture
+    R = np.array([0.4767,    -0.87906,  -0.0042082,
+                  0.86673,      0.4692,     0.16922,
+                  -0.14678,   -0.084313,     0.98557]).reshape(3,3)
+    t = np.array([-100.88605433702469, 35.37238761782646, 298.0000078678131])
+    test_pose(R, t, label="live_capture", gt_img_path="rgb_image_0.0.png")
+
+if __name__ == '__main__':
+    main()
