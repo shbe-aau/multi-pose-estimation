@@ -21,6 +21,9 @@ ARG UBUNTU_VERSION=18.04
 
 FROM nvidia/cudagl:10.0-devel-ubuntu${UBUNTU_VERSION} as base
 
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute,display
+
 # Required for Python3.6
 RUN rm /etc/apt/sources.list.d/cuda.list
 RUN rm /etc/apt/sources.list.d/nvidia-ml.list
@@ -85,7 +88,8 @@ ENV CUB_HOME=$PWD/cub-1.10.0
 # Install pytorch3d (forked)
 ENV FORCE_CUDA=1
 # RUN pip3 --no-cache-dir install 'git+https://github.com/shbe-aau/pytorch3d.git'
-RUN pip3 --no-cache-dir install 'git+https://github.com/facebookresearch/pytorch3d.git@v0.4.0'
+# TODO this line below is the culprit
+# RUN pip3 --no-cache-dir install 'git+https://github.com/facebookresearch/pytorch3d.git@v0.4.0'
 
 # Install correct version (i.e. 3.3) of libassimp and pyassimp
 RUN apt-get install -y \
