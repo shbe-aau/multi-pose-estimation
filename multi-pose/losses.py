@@ -17,9 +17,13 @@ def Loss(predicted_poses,
          renderer,
          ts,
          ids=[],
-         views=None,
+         views=10,
          config=None,
          fixed_gt_images=None):
+    if isinstance(views, int):
+        num_views = views
+    else:
+        num_views = len(views)
     Rs_gt = torch.tensor(np.stack(gt_poses), device=renderer.device,
                             dtype=torch.float32)
     if config is None:
@@ -52,7 +56,6 @@ def Loss(predicted_poses,
     if(loss_method=="mse-pose"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
-        num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -66,7 +69,7 @@ def Loss(predicted_poses,
         confs = predicted_poses[:,:num_views]
         prev_poses = []
         pose_losses = []
-        for i,v in enumerate(views):
+        for i in range(num_views):
             # Extract current pose and move to next one
             if fixed_gt_images is None:
                 curr_pose = predicted_poses[:,pose_start:pose_end]
@@ -146,7 +149,6 @@ def Loss(predicted_poses,
     if(loss_method=="vsd-union-old"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
-        num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -160,7 +162,7 @@ def Loss(predicted_poses,
         confs = predicted_poses[:,:num_views]
         prev_poses = []
         pose_losses = []
-        for i,v in enumerate(views):
+        for i in range(num_views):
             # Extract current pose and move to next one
             if fixed_gt_images is None:
                 curr_pose = predicted_poses[:,pose_start:pose_end]
@@ -232,7 +234,6 @@ def Loss(predicted_poses,
     if(loss_method=="vsd-union"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
-        num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -246,7 +247,7 @@ def Loss(predicted_poses,
         confs = predicted_poses[:,:num_views]
         prev_poses = []
         pose_losses = []
-        for i,v in enumerate(views):
+        for i in range(num_views):
             # Extract current pose and move to next one
             if fixed_gt_images is None:
                 curr_pose = predicted_poses[:,pose_start:pose_end]
@@ -318,7 +319,6 @@ def Loss(predicted_poses,
     if(loss_method=="vsd-union-multi-object"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
-        num_views = len(views)
         num_objects = len(renderer.obj_paths)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         class_weight = config.getfloat('Loss_parameters', 'CLASSIFY_WEIGHT', fallback=1.0)
@@ -352,7 +352,7 @@ def Loss(predicted_poses,
         losses = []
         prev_poses = []
         pose_losses = []
-        for i,v in enumerate(views):
+        for i in range(num_views):
             # Extract current pose and move to next one
             if fixed_gt_images is None:
                 curr_pose = poses[:,pose_start:pose_end]
@@ -435,7 +435,6 @@ def Loss(predicted_poses,
     if(loss_method=="vsd-gt-mask"):
         depth_max = config.getfloat('Loss_parameters', 'DEPTH_MAX', fallback=30.0)
         pose_max = config.getfloat('Loss_parameters', 'POSE_MAX', fallback=40.0)
-        num_views = len(views)
         gamma = config.getfloat('Loss_parameters', 'GAMMA', fallback=1.0 / num_views)
         pose_start = num_views
         pose_end = pose_start + 6
@@ -449,7 +448,7 @@ def Loss(predicted_poses,
         confs = predicted_poses[:,:num_views]
         prev_poses = []
         pose_losses = []
-        for i,v in enumerate(views):
+        for i in range(num_views):
             # Extract current pose and move to next one
             if fixed_gt_images is None:
                 curr_pose = predicted_poses[:,pose_start:pose_end]

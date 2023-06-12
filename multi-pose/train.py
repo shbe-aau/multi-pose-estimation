@@ -30,7 +30,7 @@ import random
 optimizer = None
 lr_reducer = None
 pipeline = None
-views = []
+num_views = 10
 epoch = 0
 
 dbg_memory = False
@@ -87,13 +87,13 @@ def loadDataset(file_list, batch_size=2, obj_id=0):
     return data
 
 def main():
-    global optimizer, lr_reducer, views, epoch, pipeline
+    global optimizer, lr_reducer, num_views, epoch, pipeline
     # Read configuration file
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment_name")
     arguments = parser.parse_args()
 
-    if(arguments.experiment_name.startswith('./experiments')):
+    if(arguments.experiment_name.startswith('./experiments') or arguments.experiment_name.startswith('experiments')):
         cfg_file_path = arguments.experiment_name
     else:
         cfg_file_path = os.path.join("./experiments", arguments.experiment_name)
@@ -116,7 +116,11 @@ def main():
 
     # Prepare rotation matrices for multi view loss function
     eulerViews = json.loads(args.get('Rendering', 'VIEWS'))
-    views = prepareViews(eulerViews)
+    if isinstance(eulerViews, int):
+        num_views = eulerViews
+    else:
+        num_views = len(eulerViews)
+    #views = prepareViews(eulerViews) # remnant from when we set views by hand
 
     # Set the cuda device
     device = torch.device("cuda:0")
@@ -152,7 +156,7 @@ def main():
         pose_dim = -1
 
     # Initialize a model using the renderer, mesh and reference image
-    model = Model(num_views=len(views),
+    model = Model(num_views=num_views,
                   num_objects=len(model_path_loss),
                   finetune_encoder=args.getboolean('Training','FINETUNE_ENCODER', fallback=False),
                   classify_objects=args.getboolean('Training','CLASSIFY_OBJECTS', fallback=False),
@@ -395,7 +399,7 @@ def runEpoch(br, dataset, model,
         loss, batch_loss, gt_images, predicted_images = Loss(predicted_poses, Rs, br,
                                                              ts,
                                                              ids=ids,
-                                                             views=views,
+                                                             views=num_views,
                                                              config=config)
 
         Rs = torch.tensor(np.stack(Rs), device=device, dtype=torch.float32)
@@ -443,9 +447,9 @@ def runEpoch(br, dataset, model,
             vmin = np.linalg.norm(T)*0.9
             vmax = max(np.max(gt_img), np.max(predicted_img))
 
-            fig = plt.figure(figsize=(12,3+len(views)*2))
-            #for viewNum in np.arange(len(views)):
-            plotView(0, len(views), vmin, vmax, input_images, gt_images, predicted_images,
+            fig = plt.figure(figsize=(12,3+num_views*2))
+            #for viewNum in np.arange(num_views):
+            plotView(0, num_views, vmin, vmax, input_images, gt_images, predicted_images,
                      predicted_poses, batch_loss, batch_size, threshold=config['Loss_parameters'].getfloat('DEPTH_MAX'))
             fig.tight_layout()
 
