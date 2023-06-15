@@ -225,8 +225,7 @@ class DatasetGenerator():
 
                 # Upscale all BG images to twice the size when generating full scenes
                 if(self.gen_scenes):
-                    bgr = cv2.resize(bgr, (0,0), fx=2.0, fy=2.0) 
-                
+                    bgr = cv2.resize(bgr, (0,0), fx=2.0, fy=2.0)
                 H,W = bgr.shape[:2]
                 y_anchor = int(np.random.rand() * (H-shape[0]))
                 x_anchor = int(np.random.rand() * (W-shape[1]))
