@@ -245,14 +245,14 @@ def main():
 
 
     # Check if training based on PBR using DataLoader is enabled
-    try:
+    if(args.has_option('Dataset', 'PBR_PATH')):
         pbr_path = args.get('Dataset', 'PBR_PATH')
         obj_ids = json.loads(args.get('Dataset', 'PBR_OBJ_IDS'))
 
         from DatasetPBR import DatasetGenerator
         training_dataset = DatasetGenerator(pbr_path, obj_ids)
         training_data = torch.utils.data.DataLoader(training_dataset, args.getint('Training', 'BATCH_SIZE'), shuffle=True, num_workers=2)
-    except: # Default to old approach in case the above fails
+    else: # Default to old approach in case PBR path is not specified
         # Prepare datasets
         from DatasetGeneratorOpenGL import DatasetGenerator
         bg_path = "../../autoencoder_ws/data/VOC2012/JPEGImages/"
@@ -427,7 +427,7 @@ def runEpoch(br, dataset, model,
             print("nan loss !!!! OH NOOOOO!!!")
             stop
 
-        
+
         if(model.training):
             print("Batch: {0}/{1} (size: {2}) - loss: {3}".format(i+1,len(dataset), len(Rs),torch.mean(batch_loss)))
         else:

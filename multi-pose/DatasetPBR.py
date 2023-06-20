@@ -14,7 +14,7 @@ class DatasetGenerator(torch.utils.data.Dataset):
 
         # Create combined list with all objects
         for new_id,old_id in enumerate(obj_ids):
-            curr_obj = self.data[old_id]
+            curr_obj = self.data[int(old_id)]
             for i,_ in enumerate(curr_obj):
                 curr_obj[i]['obj_id'] = new_id
             self.data_combined += curr_obj
