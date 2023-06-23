@@ -251,7 +251,7 @@ def main():
 
         from DatasetPBR import DatasetGenerator
         training_dataset = DatasetGenerator(pbr_path, obj_ids)
-        training_data = torch.utils.data.DataLoader(training_dataset, args.getint('Training', 'BATCH_SIZE'), shuffle=True, num_workers=2)
+        training_data = torch.utils.data.DataLoader(training_dataset, args.getint('Training', 'BATCH_SIZE'), shuffle=True)
     else: # Default to old approach in case PBR path is not specified
         # Prepare datasets
         from DatasetGeneratorOpenGL import DatasetGenerator
