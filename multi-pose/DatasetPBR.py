@@ -2,6 +2,7 @@ import json
 import numpy as np
 import cv2
 import os
+import random
 
 from utils.utils import *
 
@@ -12,6 +13,10 @@ class DatasetGenerator(torch.utils.data.Dataset):
         self.data = self.load_pbr_dataset(self.pbr_path)
         self.data_combined = []
 
+        print(obj_ids)
+        #print(self.data)
+        #print(self.data.keys())
+        
         # Create combined list with all objects
         for new_id,old_id in enumerate(obj_ids):
             curr_obj = self.data[int(old_id)]
@@ -20,10 +25,14 @@ class DatasetGenerator(torch.utils.data.Dataset):
             self.data_combined += curr_obj
 
 
+
+
     def __len__(self):
-        return len(self.data_combined)
+        random.shuffle(self.data_combined) #shbe hacky stuff
+        return 100000 #len(self.data_combined)
 
     def __getitem__(self, idx):
+        
         curr_item = self.data_combined[idx]
         img = self.sample2img(curr_item)
         obj_id = curr_item['obj_id']
