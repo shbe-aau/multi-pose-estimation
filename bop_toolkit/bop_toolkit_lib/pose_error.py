@@ -239,8 +239,8 @@ def cou_mask(mask_est, mask_gt):
   :param mask_gt: hxw ndarray with the ground-truth mask.
   :return: The calculated error.
   """
-  mask_est_bool = mask_est.astype(np.bool)
-  mask_gt_bool = mask_gt.astype(np.bool)
+  mask_est_bool = mask_est.astype(np.bool_)
+  mask_gt_bool = mask_gt.astype(np.bool_)
 
   inter = np.logical_and(mask_gt_bool, mask_est_bool)
   union = np.logical_or(mask_gt_bool, mask_est_bool)

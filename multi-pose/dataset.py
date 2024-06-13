@@ -47,7 +47,7 @@ class Dataset(object):
         self.noof_obj_pixels = np.empty( (self.noof_training_imgs,), dtype= bool)
         self.train_y = np.empty( (self.noof_training_imgs,) + self.shape, dtype=np.uint8 )
         self.bg_imgs = np.empty( (self.noof_bg_imgs,) + self.shape, dtype=np.uint8 )
-        if np.float(eval(self._kw['realistic_occlusion'])):
+        if np.float_(eval(self._kw['realistic_occlusion'])):
             self.random_syn_masks
 
 
@@ -296,10 +296,10 @@ class Dataset(object):
         rand_vocs = self.bg_imgs[rand_idcs_bg]
 
         if eval(self._kw['realistic_occlusion']):
-            masks = self.augment_occlusion_mask(masks.copy(),max_occl=np.float(self._kw['realistic_occlusion']))
+            masks = self.augment_occlusion_mask(masks.copy(),max_occl=np.float_(self._kw['realistic_occlusion']))
 
         if eval(self._kw['square_occlusion']):
-            masks = self.augment_squares(masks.copy(),rand_idcs,max_occl=np.float(self._kw['square_occlusion']))
+            masks = self.augment_squares(masks.copy(),rand_idcs,max_occl=np.float_(self._kw['square_occlusion']))
 
         batch_x[masks] = rand_vocs[masks]
 
@@ -507,7 +507,7 @@ class Dataset(object):
         random_syn_masks = bitarray.bitarray()
         with open(os.path.join(workspace_path,'random_tless_masks/arbitrary_syn_masks_1000.bin'), 'r') as fh:
             random_syn_masks.fromfile(fh)
-        occlusion_masks = np.fromstring(random_syn_masks.unpack(), dtype=np.bool)
+        occlusion_masks = np.fromstring(random_syn_masks.unpack(), dtype=np.bool_)
         occlusion_masks = occlusion_masks.reshape(-1,224,224,1).astype(np.float32)
         print(occlusion_masks.shape)
 
@@ -518,7 +518,7 @@ class Dataset(object):
     def augment_occlusion_mask(self, masks, verbose=False, min_trans = 0.2, max_trans=0.7, max_occl = 0.25,min_occl = 0.0):
 
 
-        new_masks = np.zeros_like(masks,dtype=np.bool)
+        new_masks = np.zeros_like(masks,dtype=np.bool_)
         occl_masks_batch = self.random_syn_masks[np.random.choice(len(self.random_syn_masks),len(masks))]
         for idx,mask in enumerate(masks):
             occl_mask = occl_masks_batch[idx]
@@ -529,11 +529,11 @@ class Dataset(object):
 
                 transl_occl_mask = cv2.warpAffine(occl_mask,M,(occl_mask.shape[0],occl_mask.shape[1]))
 
-                overlap_matrix = np.invert(mask.astype(np.bool)) * transl_occl_mask.astype(np.bool)
+                overlap_matrix = np.invert(mask.astype(np.bool_)) * transl_occl_mask.astype(np.bool_)
                 overlap = len(overlap_matrix[overlap_matrix==True])/float(len(mask[mask==0]))
 
                 if overlap < max_occl and overlap > min_occl:
-                    new_masks[idx,...] = np.logical_xor(mask.astype(np.bool), overlap_matrix)
+                    new_masks[idx,...] = np.logical_xor(mask.astype(np.bool_), overlap_matrix)
                     if verbose:
                         print('overlap is ', overlap)
                     break
@@ -565,10 +565,10 @@ class Dataset(object):
         rand_vocs = self.bg_imgs[rand_idcs_bg]
 
         if eval(self._kw['realistic_occlusion']):
-            masks = self.augment_occlusion_mask(masks.copy(),max_occl=np.float(self._kw['realistic_occlusion']))
+            masks = self.augment_occlusion_mask(masks.copy(),max_occl=np.float_(self._kw['realistic_occlusion']))
 
         if eval(self._kw['square_occlusion']):
-            masks = self.augment_squares(masks.copy(),rand_idcs,max_occl=np.float(self._kw['square_occlusion']))
+            masks = self.augment_squares(masks.copy(),rand_idcs,max_occl=np.float_(self._kw['square_occlusion']))
 
         batch_x[masks] = rand_vocs[masks]
 

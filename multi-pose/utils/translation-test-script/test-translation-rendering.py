@@ -65,7 +65,7 @@ def setup_renderer(device, render_size_width, render_size_height, center_focal_p
 def opengl2pytorch3d(R,t):
     # Convert R matrix from opengl format to pytorch
     # for rendering only!
-    xy_flip = np.eye(3, dtype=np.float)
+    xy_flip = np.eye(3, dtype=np.float_)
     xy_flip[0,0] = -1.0
     xy_flip[1,1] = -1.0
     R_pytorch = np.transpose(R)

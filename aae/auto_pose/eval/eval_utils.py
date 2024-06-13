@@ -169,7 +169,7 @@ def generate_scene_crops(test_imgs, test_depth_imgs, gt, eval_args, hw_ae, visib
                             # cv2.imshow('mask',mask.astype(np.float32))
                             # cv2.waitKey(0)
                             
-                            # mask = mask_eroded.astype(np.bool)
+                            # mask = mask_eroded.astype(np.bool_)
                             img_copy = np.zeros_like(img)
                             img_copy[mask] = img[mask]
                             crop = img_copy[top:bottom, left:right].copy()

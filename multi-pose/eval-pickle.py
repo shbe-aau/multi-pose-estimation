@@ -209,7 +209,7 @@ def main():
                     best_pose = conf
 
             # Invert xy axes
-            xy_flip = np.eye(3, dtype=np.float)
+            xy_flip = np.eye(3, dtype=np.float_)
             xy_flip[0,0] = -1.0
             xy_flip[1,1] = -1.0
             R_predicted = R_predicted.dot(xy_flip)

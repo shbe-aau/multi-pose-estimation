@@ -47,7 +47,7 @@ def main():
     pipeline = Pipeline(encoder, model, device)
 
     # around x
-    shiftx = np.eye(3, dtype=np.float)
+    shiftx = np.eye(3, dtype=np.float_)
     theta = np.pi / num_datapoints
     #theta = np.pi / 3
     shiftx[1,1] = np.cos(theta)
@@ -55,14 +55,14 @@ def main():
     shiftx[2,2] = np.cos(theta)
     shiftx[2,1] = np.sin(theta)
     # around y
-    shifty = np.eye(3, dtype=np.float)
+    shifty = np.eye(3, dtype=np.float_)
     theta = np.pi / num_datapoints
     shifty[0,0] = np.cos(theta)
     shifty[0,2] = -np.sin(theta)
     shifty[2,2] = np.cos(theta)
     shifty[2,0] = np.sin(theta)
     # around z
-    shiftz = np.eye(3, dtype=np.float)
+    shiftz = np.eye(3, dtype=np.float_)
     theta = np.pi / num_datapoints
     shiftz[0,0] = np.cos(theta)
     shiftz[0,1] = -np.sin(theta)
@@ -70,7 +70,7 @@ def main():
     shiftz[1,0] = np.sin(theta)
     predicted_poses = []
     predicted_poses_raw = []
-    R_conv = np.eye(3, dtype=np.float)
+    R_conv = np.eye(3, dtype=np.float_)
     #R_conv = np.array([[ 0.5435,  0.1365,  0.8283],
     #                   [ 0.6597,  0.5406, -0.5220],
     #                   [-0.5190,  0.8301,  0.2037]])
